@@ -705,6 +705,11 @@ class FlameGaze extends GazeMeter:
 		add(GazeMeter.SEEN_DEATH * SEEN_DEATH_SCALE)
 
 
+## Veil (spec 5.9): Wren -- Evernight's automatic takes pass him over (MissionDirector.keeps_alive(), Crowd.spared()).
+func keeps_alive(p: Person) -> bool:
+	return p != null and p == wren
+
+
 ## Music by situation: the vigil's chant.
 func music_mood() -> StringName:
 	return &"rite"

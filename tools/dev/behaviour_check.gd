@@ -60,15 +60,22 @@ extends SceneTree
 ##          (the houses the casts leave whole only ever burn this way: every fire-kind hit kills a house outright)
 ##   clip   (v0.06) a power's preview clip for the draft, recorded in the town rather than the sandbox (whose dummy
 ##          troopers cannot be lured or confused): --power=<key> [--at=x,y] [--snap] [--seconds=s]
-##          [--setup=rite|evac|cross|body|bodies] [--zoom=z]; --setup=cross sends the citizens nearest the cast walking across it
+##          [--setup=rite|evac|cross|body|bodies|dusk|dark] [--zoom=z] [--cam=dx,dy] [--frames=n] [--no-sheet]; --setup=dark lays a dusk
+##          patch on the cast itself just before it (the cast is stamped dark); --no-sheet leaves assets/clips alone; --frames=n is how many
+##          whole frames --full-frames saves (the sheet keeps its 16; the folder is made); --look=night is the town's (a night town);
+##          --setup=dusk lays a dusk patch DUSK_AT from the cast (Dread of the
+##          Dark: dark ground in reach); --setup=cross sends the citizens nearest the cast walking across it
 ##          (a power that acts on walkers has some: The Folded Ward); --setup=body kills the citizen nearest --at and casts
 ##          on their body (Raise the Dead, --mode=); --setup=bodies kills the CLIP_BODIES citizens nearest --at and casts
 ##          BODIES_CAST_OFF east of them (Grave Tide: the heap rises, its giant too, and walks to the click); --zoom frames a
 ##          wide area (default 1.5);
-##          --look=dx,dy centres the camera that far (ground units) from the cast (a tall power that works in
+##          --cam=dx,dy (or --look=dx,dy when both are numbers) centres the camera that far (ground units) from the cast (a tall power that works in
 ##          front of itself: Heaven's Door, --look=1.7,-3.0 --zoom=0.5);
 ##          --mode=<key> picks a mode; --to=dx,dy sets a second click that far from the cast (Gravecall); for Bound in
 ##          Law (--power=bound) --to=x,y is instead the second place itself, taken as the citizen nearest it;
+##          --whole cuts each sheet frame from the largest centred region of the view with the clip's aspect (a low --zoom then shows
+##          the whole view), not the fixed centre crop; --times=t1,..,t16 takes the sheet's 16 frames at those seconds after the cast
+##          (rising; otherwise a message and the even spacing; --full-frames follows them);
 ##          --fx-clock spaces the frames on the effect's own clock, not the frame count (a long power whose moment
 ##          must be caught: The Sealed Verdict, --setup=cross --zoom=1.0 --seconds=33.3 --fx-clock, its 15th frame just
 ##          after the stroke); --full-frames=<dir> also saves each frame whole, uncropped, as <dir>/<key>_<i>.png;
@@ -498,7 +505,13 @@ var mission: Mission
 var route := ""
 
 
+## The pace the scripted nights keep (Rules.pace): they were written and recorded when Blight cooled for 36 s; the game's is 20 s since
+## the Veil's second review pass (2026-11-22). A play that waits longer than it must is still a play.
+const BOT_PACE := {"blight": 36.0}
+
+
 func _initialize() -> void:
+	Rules.pace = BOT_PACE.duplicate()
 	AnimalPack.enabled = false  # the references are of the town without its animals (AnimalPack)
 	Children.enabled = false  # nor its children (Children)
 	mission = load("res://scenes/mission.tscn").instantiate()
@@ -1349,6 +1362,8 @@ const CROSS_TO := 4.5
 ## The clip's "bodies" setup: this many fall round the cast, and the cast lands this far east of them.
 const CLIP_BODIES := 12
 const BODIES_CAST_OFF := Vector2(4.0, 0.0)
+## The clip's "dusk" setup: where the dusk patch is laid, from the cast (outside DUSK_R of it, inside the light reach of Dread).
+const DUSK_AT := Vector2(3.5, 0.0)
 
 
 ## A power's draft preview, recorded in the town: the camera close on the cast, the HUD hidden, CLIP_FRAMES frames
@@ -1397,6 +1412,11 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 		if cast_at != Vector2.INF:
 			at = cast_at
 		await _frames(2 * 60)
+	elif setup == "dusk":
+		# (Veil Task 12) A dusk patch DUSK_AT east of the cast, as an earlier Veil cast leaves: Dread of the Dark needs dark ground in
+		# reach (it is refused without), and the cast itself stays on lit ground (its light size).
+		crowd.lay_dusk(at + DUSK_AT, VeilRules.DUSK_R, VeilRules.DUSK_TIME)
+		await _frames(30)
 	elif setup == "cross":
 		# The CROSSERS citizens nearest the cast set off across it, each to the far side of the cast from where it stands.
 		var near: Array[Person] = []
@@ -1447,9 +1467,15 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 			if is_instance_valid(p) and p.is_alive() and not p.inside and p != who and p.ground_pos.distance_to(want) < best_to:
 				best_to = p.ground_pos.distance_to(want)
 				extra["to"] = p.ground_pos
-	var look_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--look")
-	if look_arg != "":
-		var off := look_arg.split(",")
+	# The camera offset: --cam=dx,dy, or --look=dx,dy when it is two numbers (a word, as --look=night, is the town's own).
+	var cam_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--cam")
+	if cam_arg == "":
+		var look_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--look")
+		var look_xy := look_arg.split(",")
+		if look_xy.size() == 2 and look_xy[0].is_valid_float() and look_xy[1].is_valid_float():
+			cam_arg = look_arg
+	if cam_arg != "":
+		var off := cam_arg.split(",")
 		look = at + Vector2(float(off[0]), float(off[1]))
 	var bf: Battlefield = mission._bf
 	mission._hud.visible = false
@@ -1463,35 +1489,87 @@ func _clip(key: String, at_arg: String, seconds_arg: String, setup: String) -> v
 	if to_arg != "" and key != "bound" and String(PowerBook.get_power(key).get("aim", "")) == "drag" \
 			and (extra["to"] as Vector2).distance_to(at) > 0.01:
 		cast_dir = ((extra["to"] as Vector2) - at).normalized()
+	if setup == "dark":
+		# A dusk patch on the cast itself, laid at the last moment (it lasts VeilRules.DUSK_TIME, and the clip has waited 20 s of
+		# calm), so Rules.cast stamps the cast dark (Crowd.in_dark) and shows its dark size.
+		crowd.lay_dusk(at, VeilRules.DUSK_R, VeilRules.DUSK_TIME)
+		print("BEHAVIOUR clip dark in_dark=", crowd.in_dark(at))
 	var fx := _force_cast(0, at, cast_dir, extra)
 	var run := float(seconds_arg) if seconds_arg != "" else (fx.duration if fx != null else 4.0)
 	var fx_clock := "--fx-clock" in OS.get_cmdline_user_args()
 	var full_dir := Battlefield.arg_value(OS.get_cmdline_user_args(), "--full-frames")
+	if full_dir != "":
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(full_dir))
+	var frames_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--frames")
+	var full_count := maxi(int(frames_arg), 1) if frames_arg != "" else PowerBook.CLIP_FRAMES
+	var no_sheet := "--no-sheet" in OS.get_cmdline_user_args()
+	var whole := "--whole" in OS.get_cmdline_user_args()
 	var crop := PowerBook.CLIP_SIZE * 2
 	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
 	var sheet := Image.create(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows, false,
 		Image.FORMAT_RGBA8)
-	var t := 0.0
+	# The shots in time order: the sheet's CLIP_FRAMES, and (with --full-frames) `full_count` whole frames; one that falls on
+	# both is taken once.
+	var shots: Array[Dictionary] = []
+	# --times=t1,...,t16: the sheet's frames at these times (seconds after the cast, rising; on the effect's clock with --fx-clock).
+	var times: Array[float] = []
+	var times_arg := Battlefield.arg_value(OS.get_cmdline_user_args(), "--times")
+	if times_arg != "":
+		for part in times_arg.split(","):
+			times.append(float(part))
+		var rising := true
+		for i in range(1, times.size()):
+			rising = rising and times[i] > times[i - 1]
+		if times.size() != PowerBook.CLIP_FRAMES or not rising:
+			print("BEHAVIOUR clip --times needs exactly %d rising values; using the even spacing" % PowerBook.CLIP_FRAMES)
+			times.clear()
 	for i in PowerBook.CLIP_FRAMES:
-		var due := run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES)
+		var shot_due := times[i] if not times.is_empty() else run * (float(i) + 0.5) / float(PowerBook.CLIP_FRAMES)
+		shots.append({"due": shot_due, "sheet": i, "full": -1})
+	if full_dir != "":
+		for i in full_count:
+			var due := run * (float(i) + 0.5) / float(full_count)
+			var merged := false
+			if full_count == PowerBook.CLIP_FRAMES:
+				shots[i]["full"] = i
+				merged = true
+			if not merged:
+				shots.append({"due": due, "sheet": -1, "full": i})
+	shots.sort_custom(func(x: Dictionary, y: Dictionary) -> bool: return float(x["due"]) < float(y["due"]))
+	var t := 0.0
+	for shot in shots:
+		var due: float = shot["due"]
 		if fx_clock and is_instance_valid(fx):
 			# A long power's moment (The Sealed Verdict's stroke) caught on its own clock, which a busy machine slows.
 			while is_instance_valid(fx) and not fx.finished and fx.t < due:
 				await process_frame
 		else:
 			await _frames(maxi(roundi((due - t) * 60.0), 0))
-		t = due
+		t = maxf(t, due)
 		await RenderingServer.frame_post_draw
 		var img := bf.get_viewport().get_texture().get_image()
-		if full_dir != "":
-			img.save_png(full_dir.path_join("%s_%02d.png" % [key, i]))
-		var from := Vector2i((img.get_width() - crop.x) / 2, (img.get_height() - crop.y) / 2)
-		var frame := img.get_region(Rect2i(from, crop))
+		if int(shot["full"]) >= 0:
+			img.save_png(full_dir.path_join("%s_%02d.png" % [key, int(shot["full"])]))
+		var si: int = shot["sheet"]
+		if si < 0:
+			continue
+		var cut := crop
+		if whole:
+			# --whole: the largest centred region with the clip's aspect, scaled down to the clip size.
+			var aspect := float(PowerBook.CLIP_SIZE.x) / float(PowerBook.CLIP_SIZE.y)
+			cut = Vector2i(img.get_width(), roundi(img.get_width() / aspect))
+			if cut.y > img.get_height():
+				cut = Vector2i(roundi(img.get_height() * aspect), img.get_height())
+		var from := Vector2i((img.get_width() - cut.x) / 2, (img.get_height() - cut.y) / 2)
+		var frame := img.get_region(Rect2i(from, cut))
 		frame.convert(Image.FORMAT_RGBA8)
 		frame.resize(PowerBook.CLIP_SIZE.x, PowerBook.CLIP_SIZE.y, Image.INTERPOLATE_BILINEAR)
-		sheet.blit_rect(frame, Rect2i(Vector2i.ZERO, PowerBook.CLIP_SIZE), Vector2i(PowerBook.clip_frame(i).position))
-		if i == PowerBook.CLIP_FRAMES / 2 or i == PowerBook.CLIP_FRAMES - 1:
+		sheet.blit_rect(frame, Rect2i(Vector2i.ZERO, PowerBook.CLIP_SIZE), Vector2i(PowerBook.clip_frame(si).position))
+		if si == PowerBook.CLIP_FRAMES / 2 or si == PowerBook.CLIP_FRAMES - 1:
 			_clip_report(key, at, t)
+	if no_sheet:
+		print("BEHAVIOUR clip no sheet written")
+		return
 	var out := ProjectSettings.globalize_path(PowerBook.clip_path(key))
 	sheet.save_png(out)
 	print("BEHAVIOUR clip ", out)
@@ -3392,7 +3470,8 @@ func _prisoner(which: String) -> void:
 ## Silent Doom on him (beyond its reach of her), else Mind Whisper sends him off; bound, no gaoler near -- Ember the stocks; held --
 ## Discord on her seizer, or Doom him once she stands clear; free -- a watcher (the postern's watch aside) near her or her next
 ## stretch, whisper him off, else Doom, else Discord; Mind Whisper sends her along her road, stopping short of a watched postern; at
-## the postern, watched, its change more than PRISONER_SOON off -- whisper one of its watch off. Never a loud power.
+## the postern, watched, its change more than PRISONER_SOON off -- whisper one of its watch off. Never a loud power. Each Doom's
+## reach is sized by the ground under its aim (GOD_T1.doom_r(), ruling VE1: twice as wide in the dark), so it never takes her too.
 func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: Crowd) -> String:
 	var her := d.charge
 	if not WarningDirector._alive(her) or her.inside:
@@ -3402,7 +3481,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 			if not d._watching(v) or (v as Person).ground_pos.distance_to(her.ground_pos) > EscortDirector.SIGHT + PRISONER_WARN:
 				continue
 			var g := v as Person
-			if _slot_ready(rules, slots, "doom") and g.ground_pos.distance_to(her.ground_pos) > SilentDoom.RADIUS + PRISONER_CLEAR:
+			if _slot_ready(rules, slots, "doom") and g.ground_pos.distance_to(her.ground_pos) > GOD_T1.doom_r(crowd, g.ground_pos) + PRISONER_CLEAR:
 				rules.cast(slots.doom, g.ground_pos)
 				return "doom a gaoler"
 			if _slot_ready(rules, slots, "whisper") and not g.shaken():
@@ -3419,7 +3498,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 		if _slot_ready(rules, slots, "discord"):
 			rules.cast(slots.discord, s.ground_pos)
 			return "discord her seizer"
-		if _slot_ready(rules, slots, "doom") and her.ground_pos.distance_to(s.ground_pos) > SilentDoom.RADIUS + PRISONER_CLEAR:
+		if _slot_ready(rules, slots, "doom") and her.ground_pos.distance_to(s.ground_pos) > GOD_T1.doom_r(crowd, s.ground_pos) + PRISONER_CLEAR:
 			rules.cast(slots.doom, s.ground_pos)
 			return "doom her seizer"
 		return ""
@@ -3434,7 +3513,7 @@ func _prisoner_act(rules: Rules, slots: Dictionary, d: PrisonerDirector, crowd: 
 		if _slot_ready(rules, slots, "whisper") and not p.shaken():
 			rules.cast(slots.whisper, p.ground_pos, {"target": p, "to": _prisoner_away(crowd, p, her.ground_pos)})
 			return "whisper a watcher off"
-		if _slot_ready(rules, slots, "doom") and p.ground_pos.distance_to(her.ground_pos) > SilentDoom.RADIUS + PRISONER_CLEAR:
+		if _slot_ready(rules, slots, "doom") and p.ground_pos.distance_to(her.ground_pos) > GOD_T1.doom_r(crowd, p.ground_pos) + PRISONER_CLEAR:
 			rules.cast(slots.doom, p.ground_pos)
 			return "doom a watcher"
 		if _slot_ready(rules, slots, "discord") and p.ground_pos.distance_to(her.ground_pos) > DiscordFx.DISCORD_R + PRISONER_CLEAR:
@@ -4540,15 +4619,16 @@ func _flame_swap(rules: Rules, d: VigilFlameDirector, slots: Dictionary) -> void
 
 ## Silent Doom at `at` would go unseen and take none of `spare` (v0.11 M6, plan decision 304): it takes someone; nobody living out of
 ## doors beyond its radius stands within Crowd.DOOM_WITNESS (and `margin` more, the final review: Exodus's EXODUS_MARGIN, room to spare
-## so no one walking in while it falls sees it) of anyone within it; none within it is one of `spare`. Only reads.
-func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = [], margin := 0.0) -> bool:
+## so no one walking in while it falls sees it) of anyone within it; none within it is one of `spare`. `r` is the Doom's reach (a policy
+## that casts into the dark passes the dark size, GOD_T1.doom_r(), ruling VE1). Only reads.
+func _doom_unseen(crowd: Crowd, at: Vector2, spare: Array = [], margin := 0.0, r := SilentDoom.RADIUS) -> bool:
 	var victims: Array[Person] = []
 	var others: Array[Person] = []
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
 			if not is_instance_valid(p) or not p.is_alive() or p.inside:
 				continue
-			if p.ground_pos.distance_to(at) <= SilentDoom.RADIUS:
+			if p.ground_pos.distance_to(at) <= r:
 				victims.append(p)
 			else:
 				others.append(p)

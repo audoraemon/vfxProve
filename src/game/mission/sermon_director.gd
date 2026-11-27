@@ -849,6 +849,11 @@ func teardown() -> void:
 	super()
 
 
+## Veil (spec 5.2): Mira's House's own (super) and the preacher -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return super(p) or (p != null and is_instance_valid(preacher) and preacher == p)
+
+
 ## Music by situation: the sermon's chant.
 func music_mood() -> StringName:
 	return &"rite"

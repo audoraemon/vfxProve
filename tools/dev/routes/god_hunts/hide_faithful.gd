@@ -538,19 +538,22 @@ static func act_death(bc, ctx: Dictionary) -> String:
 
 # --- Veil: Silent Doom, Blight ---
 
-## Silent Doom is a kill nobody sees when it can be: a victim's witnesses within Crowd.DOOM_WITNESS are the opposition only (a patrolman's own
-## mate), never a citizen; not `strict` lets a citizen see too (a watcher about to see a believer, last resort).
-static func _doom_ok(d: HideFaithfulDirector, crowd: Crowd, at: Vector2, strict: bool) -> bool:
+## Silent Doom is a kill nobody sees when it can be: a victim's witnesses within Crowd.DOOM_WITNESS (0.6 of it in the dusk) are the opposition
+## only (a patrolman's own mate), never a citizen; not `strict` lets a citizen see too (a watcher about to see a believer, last resort). `r` is
+## the Doom's reach there (GOD_T1.doom_r(), ruling VE3).
+static func _doom_ok(d: HideFaithfulDirector, crowd: Crowd, at: Vector2, strict: bool, r := SilentDoom.RADIUS) -> bool:
 	if not strict:
 		return true
 	var watchers := {}
 	for w: Dictionary in _watchers(d):
 		watchers[w.p] = true
+	# A death in the dusk is seen from 0.6 as far (the law of the Veil, ruling VE3): the last Doom's dusk makes the next one there unseen.
+	var dusk_k := NightRules.NIGHT_SIGHT if crowd.dusk != null and crowd.dusk.covers(at) else 1.0
 	for group: Array[Person] in [crowd.citizens, crowd.soldiers]:
 		for p in group:
-			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.ground_pos.distance_to(at) <= SilentDoom.RADIUS:
+			if not is_instance_valid(p) or not p.is_alive() or p.inside or p.ground_pos.distance_to(at) <= r:
 				continue
-			if p.ground_pos.distance_to(at) <= crowd.witness_reach(p, true) + 0.3 and not watchers.has(p):
+			if p.ground_pos.distance_to(at) <= crowd.witness_reach(p, true) * dusk_k + 0.3 and not watchers.has(p):
 				return false
 	return true
 
@@ -567,8 +570,11 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 		return "blight the Bell Tower, so a seen death rings nothing"
 	if not _ready(bc, ctx, "doom"):
 		return ""
+	# Each Doom is sized by the ground under its aim (ruling VE3): on the dusk an earlier Doom or the Bell Tower's foothold left it is full
+	# size (1.6), and a believer within that of the aim falls with the seizer -- a believer lost.
 	for sz: Dictionary in _seizers(d):
-		var at := _seizer_aim(sz, SilentDoom.RADIUS, SilentDoom.T_STRIKE)
+		var r := GOD_T1.doom_r(crowd, GOD_T1.road_ahead(sz.s, SilentDoom.T_STRIKE))
+		var at := _seizer_aim(sz, r, SilentDoom.T_STRIKE)
 		if at != Vector2.INF:
 			_cast(ctx, "doom", at)
 			return "doom a %s seizer" % sz.kind
@@ -576,7 +582,8 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 		if float(th.t) > DOOM_LEAD:
 			continue
 		var at := GOD_T1.road_ahead(th.p, SilentDoom.T_STRIKE)
-		if _flock_clear(bc, d, at, SilentDoom.RADIUS + BLOW_GAP) and _doom_ok(d, crowd, at, float(th.t) > 6.0):
+		var r := GOD_T1.doom_r(crowd, at)
+		if _flock_clear(bc, d, at, r + BLOW_GAP) and _doom_ok(d, crowd, at, float(th.t) > 6.0, r):
 			_cast(ctx, "doom", at)
 			return "doom a %s" % th.kind
 	return ""

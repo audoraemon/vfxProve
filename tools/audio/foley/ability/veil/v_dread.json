@@ -1,0 +1,5 @@
+{"length": 2.6, "rms_db": -21.0, "reverb": {"rt60": 2.0, "mix": 0.22, "predelay_ms": 16, "damp": 3200}, "eq": [["lowshelf", 180, -4.0], ["peak", 3600, -1.5, 0.8]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Keys/Organ/Quiet/NT5_PedalQuiet_064_rr1.wav", "at": 0.0, "from": 0.4, "dur": 2.5, "pitch": -7, "lp": 600, "hp": 35, "fade_in": 900, "fade_out": 900, "gain_db": -2},
+  {"src": "lib:oga/ghost-breath/ghostbreath.flac", "at": 0.2, "onset": true, "dur": 1.8, "pitch": -8, "reverse": true, "lp": 1800, "hp": 150, "fade_in": 700, "fade_out": 500, "gain_db": -4},
+  {"src": "lib:oga/mild-wind-background-noise/wind background noise 2.wav", "at": 0.0, "from": 3.0, "dur": 2.5, "hp": 300, "lp": 1500, "fade_in": 800, "fade_out": 900, "gain_db": -14}
+]}

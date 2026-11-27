@@ -1,20 +1,22 @@
 extends RefCounted
-## The power book: 77 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
+## The power book: 84 draftable powers with valid effect scripts, icons, prices, cooldowns, aim and Authority.
 
 ## v0.07's cooldowns (kak-v0.07.1), which v0.08's may lengthen but never shorten (spec §2).
 const V07_COOLDOWNS := {
-	"doom": 2.5, "wisp": 25.0, "discord": 20.0, "heaven": 20.0, "blight": 25.0, "thorns": 30.0, "tornado": 30.0,
+	"doom": 2.5, "wisp": 25.0, "discord": 20.0, "heaven": 20.0, "thorns": 30.0, "tornado": 30.0,
 	"pestilence": 40.0, "dragon": 35.0, "tsunami": 40.0, "gravity": 45.0, "laser": 45.0, "orbital": 45.0,
 	"cinder": 50.0, "judgement": 60.0, "glacial": 60.0, "nova": 120.0,
 }
-## The powers added since v0.07, which have no v0.07 cooldown to keep to.
+## The powers added since v0.07, which have no v0.07 cooldown to keep to. Blight is among them since the Veil build remade it
+## (v0.07: 25 s; 20 s by the user's word of 2026-11-22: "too long for Tier 1").
 const NEW_IN_08 := ["smite", "ember", "deathmark", "whisper", "madness", "mirror", "congregation", "solaris", "voice", "schism", "oath", "echo",
 	"turncoat", "hatred", "priority", "verdict", "delusion", "noleave", "breath", "belllies", "magnify", "redefine", "bound", "disorder", "erase", "eminent", "fenced", "abolition", "unseen", "curfew", "tempest", "scatter", "shatter", "clearmind", "saint", "sanctuary", "anathema", "skylift", "windfall", "hellspark", "pilgrim", "deep", "houndgate",
-	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors", "cage", "sealed", "raise", "gravecall", "guise", "walker", "gatebelow", "pale", "serpent", "gravetide"]
+	"allroads", "yesterday", "everydoor", "fargate", "foldward", "heavendoor", "deaddoors", "cage", "sealed", "raise", "gravecall", "guise", "walker", "gatebelow", "pale", "serpent", "gravetide",
+	"slumber", "cloak", "dreamless", "dread", "shadowplay", "swallow", "evernight", "blight"]
 
 
 static func run(t) -> void:
-	t.check(PowerBook.POWERS.size() == 77, "77 powers")
+	t.check(PowerBook.POWERS.size() == 84, "84 powers")
 	var keys := {}
 	var drag := []
 	var problems: Array[String] = []
@@ -41,7 +43,8 @@ static func run(t) -> void:
 	t.check(PowerBook.get_power("nope").is_empty(), "an unknown key gives an empty entry")
 	t.check(Array(PowerBook.keys()) == ["doom", "whisper", "smite", "ember", "deathmark", "raise", "noleave", "skylift", "windfall", "hellspark", "wisp", "discord", "belllies", "breath",
 		"heaven", "scatter", "madness", "blight", "thorns", "pilgrim", "deep", "houndgate", "gravecall", "tornado", "pestilence", "guise", "walker",
-		"dragon", "mirror", "magnify", "redefine", "bound", "disorder", "unseen", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "saint",
+		"dragon", "mirror", "magnify", "redefine", "bound", "disorder", "unseen",
+		"slumber", "cloak", "dreamless", "dread", "shadowplay", "swallow", "evernight", "congregation", "oath", "echo", "turncoat", "hatred", "clearmind", "saint",
 		"priority", "verdict", "delusion", "anathema", "sanctuary", "curfew", "erase", "eminent", "fenced", "allroads", "yesterday", "foldward", "tsunami",
 		"gravity", "laser", "orbital", "cinder", "judgement", "glacial", "solaris", "voice", "gatebelow", "abolition", "tempest", "shatter", "everydoor",
 		"schism", "pale", "fargate", "heavendoor", "deaddoors", "cage", "sealed", "serpent", "gravetide", "nova"],
@@ -50,7 +53,8 @@ static func run(t) -> void:
 	for key in PowerBook.keys():
 		if PowerBook.is_quiet(key):
 			quiet.append(key)
-	t.check(quiet == ["doom", "whisper", "ember", "deathmark", "noleave", "skylift", "wisp", "discord", "belllies", "madness", "blight", "thorns", "pestilence", "guise", "walker", "mirror", "magnify", "redefine", "bound", "unseen", "congregation", "oath", "echo",
+	t.check(quiet == ["doom", "whisper", "ember", "deathmark", "noleave", "skylift", "wisp", "discord", "belllies", "madness", "blight", "thorns", "pestilence", "guise", "walker", "mirror", "magnify", "redefine", "bound", "unseen",
+		"slumber", "cloak", "dreamless", "dread", "shadowplay", "swallow", "evernight", "congregation", "oath", "echo",
 		"turncoat", "hatred", "clearmind", "saint", "priority", "verdict", "delusion", "anathema", "sanctuary", "curfew", "allroads", "yesterday", "foldward", "voice", "abolition", "everydoor", "fargate", "sealed"],
 		"the quiet powers: no danger for the town to see (%s)" % [quiet])
 	var authorities_ok := true
@@ -58,7 +62,8 @@ static func run(t) -> void:
 		authorities_ok = authorities_ok and PowerBook.AUTHORITIES.has(String(p.get("authority", "")))
 	t.check(authorities_ok and PowerBook.AUTHORITY_TITLES.size() == PowerBook.AUTHORITIES.size(),
 		"every power has a known Authority, and every Authority a title")
-	t.check(Array(PowerBook.of_authority("veil")) == ["doom", "blight", "unseen"] and PowerBook.authority_of("nova") == "ruin",
+	t.check(Array(PowerBook.of_authority("veil")) == ["doom", "blight", "unseen", "slumber", "cloak", "dreamless", "dread", "shadowplay",
+		"swallow", "evernight"] and PowerBook.authority_of("nova") == "ruin",
 		"powers by Authority (veil: %s)" % [PowerBook.of_authority("veil")])
 	t.check(PowerBook.authority_title("death") == "DEATH" and Array(PowerBook.of_authority("death")) == ["deathmark", "raise", "gravecall", "pestilence", "guise", "walker", "gatebelow", "pale", "serpent", "gravetide"] and PowerBook.authority_title("nope") == "",
 		"an Authority's title, and none for a stranger")

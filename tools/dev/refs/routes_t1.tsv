@@ -9,9 +9,9 @@ tax_b_play_3	--scenario=tax --case=play --route=b --seed=3	847853683
 harvest_b_play_1	--scenario=harvest --case=play --route=b --seed=1	707406123
 harvest_b_play_2	--scenario=harvest --case=play --route=b --seed=2	325832211
 harvest_b_play_3	--scenario=harvest --case=play --route=b --seed=3	825512106
-lamb_b_play_1	--scenario=lamb --case=play --route=b --seed=1	-798871743
-lamb_b_play_2	--scenario=lamb --case=play --route=b --seed=2	-55333362
-lamb_b_play_3	--scenario=lamb --case=play --route=b --seed=3	-11014210
+lamb_b_play_1	--scenario=lamb --case=play --route=b --seed=1	-982935649
+lamb_b_play_2	--scenario=lamb --case=play --route=b --seed=2	-783434559
+lamb_b_play_3	--scenario=lamb --case=play --route=b --seed=3	-254673638
 prayers_b_play_1	--scenario=prayers --case=play --route=b --seed=1	157504016
-prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2	-563646250
-prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3	-697184675
+prayers_b_play_2	--scenario=prayers --case=play --route=b --seed=2	-288022877
+prayers_b_play_3	--scenario=prayers --case=play --route=b --seed=3	402563701

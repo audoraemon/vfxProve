@@ -14,6 +14,8 @@ const BANNER_SECONDS := 2.2
 ## The believer view (B): the gold of its marks and the aim's count, and how high its marks sit (under a mission's diamond).
 const BELIEVER_COL := Color("ffd75a")
 const BELIEVER_LIFT := 14.0
+## The Veil's two refusals (Rules.cast(): BlightFx.refusal(), DreadOfTheDarkFx.refusal()) and their banners.
+const VEIL_REFUSALS := {"no_blight": "NOTHING HERE TO BLIGHT", "no_dark": "NO DARK HERE TO DREAD"}
 ## Cael's lines (v0.10 M5, spec §5.2): how long one stays up (longer than a banner: it is a sentence to read), the top of
 ## its plate (just under the banner's bar, 116 to 144), and the gap between his name and the line.
 const SUBTITLE_SECONDS := 4.0
@@ -1482,6 +1484,8 @@ func _on_cast_refused(slot: int, reason: String) -> void:
 		# v0.11 M5 (the final review): a director that knows why says so in place of the plain words, in one banner.
 		var words := _rules.director.refused_words(slot, reason) if _rules.director != null else ""
 		push_banner(words if words != "" else "THEY SHAKE OFF THE WHISPER", true)
+	elif VEIL_REFUSALS.has(reason):
+		push_banner(String(VEIL_REFUSALS[reason]), true)
 	UiSound.play(&"ui_buzz")
 
 

@@ -110,6 +110,17 @@ the sheet the user listens with.
   `children-voices`, `group-giggling` (pitched up), `girly-scream`; the falls from Kenney's impact sounds. Wordless takes
   only: laughs, shrieks, giggles and cries, never a word.
 
+## The Veil, the silent god (Veil authority powers, Task 12)
+
+- `ability/veil/`: the cast cues of Slumber, Cloak of Night, Dreamless, Dread of the Dark, Shadow Play, The Swallowing Dark
+  and Evernight (`v_<key>`), the Swallowing Dark's taking (`v_swallow_take`), Evernight's held night (`v_evernight_loop`, a
+  seamless loop) and Blight's sickness on a person (`q_blight_ill`). Quiet, low and close: a breath, cloth, a held low note,
+  a lamp guttering; never a bang, a scream or an alarm.
+- OpenGameArt (CC0): `ghost-breath`, `horror-breathing` (one slow breath, pitched down), `breathing-tired`,
+  `short-wind-sound`, `mild-wind-background-noise` (new here: Bashar3A, CC0; the night air), the RPG sound pack's `cloth`
+  and `cloth-heavy`, `fire-crackling` and `catching-fire` (a lamp guttering out, reversed and low-passed); VSCO 2 CE's
+  quiet organ pedal and manual (CC0, the held low notes). Nothing Sonniss-derived; nothing synthesized.
+
 ## Mission events
 
 - `mission/msn_*`: OpenGameArt (CC0) `100-cc0-sfx` and `100-cc0-sfx-2` (doors, keys, a lock, stones), `horse-trotting`,

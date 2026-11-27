@@ -2,6 +2,9 @@ extends RefCounted
 ## The draft's rules: slots filled in pick order, a pick past the last slot or over the Divine Power refused (v0.08),
 ## unpicking closes the gap, and a saved loadout comes back cleaned up.
 
+## The Veil's seven new powers had no preview clip until their looks were built (V1); Veil Task 12 recorded them and emptied it (VD3).
+const AWAITING_CLIPS := []
+
 
 static func run(t) -> void:
 	var d := Draft.new()
@@ -200,10 +203,14 @@ static func run(t) -> void:
 
 	# Every power has a recorded preview, laid out the way the draft reads it.
 	var unrecorded := ""
+	var recorded_early := ""
 	for key in PowerBook.keys():
-		if PowerBook.clip(key) == null:
+		if PowerBook.clip(key) == null and not key in AWAITING_CLIPS:
 			unrecorded += " " + key
+		elif PowerBook.clip(key) != null and key in AWAITING_CLIPS:
+			recorded_early += " " + key
 	t.check(unrecorded == "", "every power has a preview clip (missing:%s)" % unrecorded)
+	t.check(recorded_early == "", "a power awaiting its clip leaves the list once it has one (%s)" % recorded_early)
 	var sheet := PowerBook.clip("nova")
 	var rows := ceili(float(PowerBook.CLIP_FRAMES) / PowerBook.CLIP_COLUMNS)
 	t.check(sheet != null and sheet.get_size() == Vector2(PowerBook.CLIP_SIZE.x * PowerBook.CLIP_COLUMNS, PowerBook.CLIP_SIZE.y * rows),

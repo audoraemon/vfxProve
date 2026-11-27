@@ -172,9 +172,9 @@ static func _blight_standard(t) -> void:
 	t.check(not d.guarded(0) and d.blight_takes(at), "Blight: its party off it, it takes the rot")
 	var took := d.blighted(at)
 	t.check(took and std.destroyed and d.broken(0) and d.blight_words(at) == "BLIGHT - THE STANDARD ROTS"
-		and crowd.alarm - before >= Crowd.BLIGHT_ALARM and home.mind != Person.Mind.DUTY
+		and crowd.alarm >= before and home.mind != Person.Mind.DUTY
 		and d.broken_count() == 1 and d.timeline.seconds_to("step_1") <= HereticHuntDirector.CHAIN + 0.1,
-		"Blight: unguarded, the standard breaks as a blow breaks it (counted by the hunt, the next sweep chained), the Blight's alarm and the fall's, the banner")
+		"Blight: unguarded, the standard breaks as a blow breaks it (counted by the hunt, the next sweep chained), the fall's alarm (Blight's own is gone, Veil C1), the banner")
 	t.check(d.blight_target(at) == Vector2.INF, "Blight: a broken standard is no mark")
 	Kit.done(s)
 

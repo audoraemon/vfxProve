@@ -634,3 +634,13 @@ func _flush() -> void:
 			continue
 		_exit(p)
 		p.panic(house.center() if house != null else door, 2.0)
+
+
+## Veil (spec 5.2): the shouter -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and p == shouter
+
+
+## Veil (spec 5.9): Mira's believers -- Evernight's automatic takes pass him over (MissionDirector.keeps_alive(), Crowd.spared()).
+func keeps_alive(p: Person) -> bool:
+	return p != null and believers.has(p)

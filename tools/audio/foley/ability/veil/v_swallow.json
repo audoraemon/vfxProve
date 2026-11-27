@@ -1,0 +1,14 @@
+{"length": 5.5, "rms_db": -14.0, "reverb": {"rt60": 2.6, "mix": 0.22, "predelay_ms": 20, "damp": 3500}, "eq": [["lowshelf", 60, -2.0], ["peak", 180, 2.0, 0.9]], "layers": [
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/BDrumNewhit_v7_rr1_Sum.wav", "at": 0.0, "onset": true, "dur": 3.0, "pitch": -8, "lp": 220, "fade_out": 1500, "gain_db": 0},
+  {"src": "lib:oga/muffled-distant-explosion/NenadSimic - Muffled Distant Explosion.wav", "at": 0.0, "onset": true, "dur": 4.0, "pitch": -5, "hp": 25, "lp": 500, "fade_out": 2000, "gain_db": -1},
+  {"src": "lib:oga/stone-door/stone_door.ogg", "at": 0.2, "onset": true, "pitch": -8, "hp": 50, "lp": 3500, "fade_out": 600, "gain_db": 0},
+  {"src": "lib:oga/stone-door/stone_door.ogg", "at": 1.1, "onset": true, "pitch": -11, "hp": 50, "lp": 2500, "fade_out": 800, "gain_db": -5},
+  {"src": "lib:oga/stonerockorwoodmovednotick/stone_rock_or_wood_moved_no_tick.mp3", "at": 0.3, "onset": true, "pitch": -4, "hp": 150, "lp": 7000, "fade_out": 200, "gain_db": -8},
+  {"src": "lib:oga/earthquake-and-open-sesame/shake.flac", "at": 0.05, "from": 0.0, "dur": 4.6, "pitch": -3, "hp": 40, "lp": 3000, "fade_in": 600, "fade_out": 1800, "gain_db": -7},
+  {"src": "lib:oga/cave-in/cave_in_-_starninjas_0.ogg", "at": 0.4, "onset": true, "dur": 3.0, "pitch": -6, "hp": 200, "lp": 6000, "fade_out": 1200, "gain_db": -6},
+  {"src": "lib:oga/75-cc0-breaking-falling-hit-sfx/sfx_breaking_and_falling/bfh1_rock_falling_05.ogg", "at": 0.6, "onset": true, "pitch": -3, "lp": 8000, "gain_db": -10},
+  {"src": "lib:oga/cc0-deep-monster-roar/monster_roar.wav", "at": 0.05, "from": 4.0, "reverse": true, "pitch": -6, "hp": 60, "lp": 1400, "fade_in": 400, "fade_out": 250, "gain_db": -6},
+  {"src": "lib:oga/wind/wind/wind/Wind.ogg", "at": 0.05, "from": 3.0, "reverse": true, "pitch": -4, "hp": 300, "lp": 3500, "fade_in": 300, "fade_out": 250, "gain_db": -9},
+  {"src": "lib:orchestra/VSCO-2-CE-1.1.0/Percussion/gongHit_fff.wav", "at": 0.05, "onset": true, "dur": 5.0, "pitch": -15, "hp": 40, "lp": 900, "fade_out": 2500, "gain_db": -12},
+  {"src": "lib:wikimedia/Earthquake.wav", "at": 0.0, "from": 30.0, "dur": 5.4, "pitch": -3, "hp": 25, "lp": 700, "fade_in": 800, "fade_out": 1800, "gain_db": -6}
+]}

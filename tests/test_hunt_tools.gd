@@ -23,13 +23,13 @@ const TIER1_ONLY := {
 const PLAYS := {
 	"hide_faithful": {"ruin": "smite,ember", "death": "deathmark,raise", "veil": "doom,blight", "passage": "skylift,windfall",
 		"decree": "noleave,breath", "dominion": "whisper,discord"},
-	"silence_witness": {"ruin": "smite,tornado", "death": "deathmark,pestilence,gravecall", "veil": "doom,blight,nova",
+	"silence_witness": {"ruin": "smite,tornado", "death": "deathmark,pestilence,gravecall", "veil": "doom,blight,slumber",
 		"passage": "skylift,windfall", "decree": "noleave,breath", "dominion": "whisper,discord,madness"},
-	"expel_inquisitor": {"ruin": "smite,solaris,tornado", "death": "deathmark,pestilence,gravecall", "veil": "doom,blight,nova",
+	"expel_inquisitor": {"ruin": "smite,solaris,tornado", "death": "deathmark,pestilence,gravecall", "veil": "doom,blight,slumber",
 		"passage": "skylift,windfall,mirror", "decree": "noleave,breath", "dominion": "whisper,discord,madness"},
-	"break_hunt": {"ruin": "smite,tornado", "death": "deathmark,pestilence", "veil": "doom,blight,nova",
+	"break_hunt": {"ruin": "smite,tornado", "death": "deathmark,pestilence", "veil": "doom,blight,slumber",
 		"passage": "skylift,windfall", "decree": "noleave,breath", "dominion": "whisper,discord,sanctuary"},
-	"face_halcyon": {"ruin": "smite,ember", "death": "deathmark", "veil": "doom,blight,nova",
+	"face_halcyon": {"ruin": "smite,ember", "death": "deathmark", "veil": "doom,blight,slumber",
 		"passage": "skylift,mirror", "decree": "noleave,breath", "dominion": "whisper,discord,voice"},
 }
 
@@ -37,10 +37,10 @@ const PLAYS := {
 ## Mirrorfold (a Tier 3 key since the user's Passage row) on Hunts 3 and 5, Ruin's is empty on Hunt 5 (Smite and Ember); the whole of Hunt 1 is empty.
 const LACKS := {
 	"hide_faithful": {"ruin": "", "death": "", "veil": "", "passage": "", "decree": "", "dominion": ""},
-	"silence_witness": {"ruin": "tornado", "death": "pestilence,gravecall", "veil": "nova", "passage": "", "decree": "", "dominion": "madness"},
-	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "pestilence,gravecall", "veil": "nova", "passage": "mirror", "decree": "", "dominion": "madness"},
-	"break_hunt": {"ruin": "tornado", "death": "pestilence", "veil": "nova", "passage": "", "decree": "", "dominion": "sanctuary"},
-	"face_halcyon": {"ruin": "", "death": "", "veil": "nova", "passage": "mirror", "decree": "", "dominion": "voice"},
+	"silence_witness": {"ruin": "tornado", "death": "pestilence,gravecall", "veil": "slumber", "passage": "", "decree": "", "dominion": "madness"},
+	"expel_inquisitor": {"ruin": "solaris,tornado", "death": "pestilence,gravecall", "veil": "slumber", "passage": "mirror", "decree": "", "dominion": "madness"},
+	"break_hunt": {"ruin": "tornado", "death": "pestilence", "veil": "slumber", "passage": "", "decree": "", "dominion": "sanctuary"},
+	"face_halcyon": {"ruin": "", "death": "", "veil": "slumber", "passage": "mirror", "decree": "", "dominion": "voice"},
 }
 
 

@@ -921,6 +921,11 @@ func report() -> Dictionary:
 	return {"swapped": swapped, "halts": halts, "touches": touches, "reports": reports_started, "home": home}
 
 
+## Veil (spec 5.2): the carter -- Blight makes him ill for a while, not sent home (MissionDirector.quarry()).
+func quarry(p: Person) -> bool:
+	return p != null and is_instance_valid(carter) and carter == p
+
+
 ## Music by situation: the town's own: the relic's road is no vigil.
 func music_mood() -> StringName:
 	return &""

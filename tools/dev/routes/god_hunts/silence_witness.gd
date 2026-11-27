@@ -11,14 +11,11 @@ const FILLED := ["ruin", "death", "veil", "passage", "decree", "dominion"]
 const LOADOUT := {
 	"ruin": ["smite", "tornado"],
 	"death": ["deathmark", "pestilence", "gravecall"],
-	"veil": ["doom", "blight", "nova"],
+	"veil": ["doom", "blight", "slumber"],
 	"passage": ["skylift", "windfall"],
 	"decree": ["noleave", "breath"],
 	"dominion": ["whisper", "discord", "madness"],
 }
-
-## Nuclear Nova's script (it has no class_name): its RADIUS, T_BLAST and WAVE_TIME lead Veil's fallback cast.
-const _NOVA := preload("res://src/fx/nuclear_nova.gd")
 
 ## The pieces every Hunt's policy shares (god_t1.gd): road_ahead().
 const GodT1 := preload("res://tools/dev/routes/god_t1.gd")
@@ -433,15 +430,15 @@ static func _plague_aim(crowd: Crowd, file: Array[Person]) -> Vector2:
 	return best
 
 
-# --- Veil: Silent Doom, Blight, Nuclear Nova ---
+# --- Veil: Silent Doom, Blight, Slumber ---
 
 ## The spec's route (MS §3, Veil): Blight the bell at 0:00, Doom each mate (they stand 1.5 from the witness and 2.4 or more from each other: one Doom each), then
 ## the witness unseen. Blight ruins the Bell Tower once, so the bell never tolls and the Lantern never turns the clock to x1.5 for a death a bystander saw. Silent
 ## Doom takes everyone within SilentDoom.RADIUS of its aim as it is cast (not led) and has a 10 s cooldown: the mates are the opener and the second cast, the
 ## witness the finisher, 20 s on, so a witness is stopped late enough that the schedule, not the chain, brings the next. A witness left a mate sees him fall
 ## and runs on, so the next Doom is his. A witness within SW_URGENT of the Temple is taken at once with the mate beside him when one Doom reaches both, and
-## Nuclear Nova (loud, 120 s) takes the file when it fits and Doom is cooling. (2026-11-02: Nova replaces Tsunami Breaker, now in Ruin's real
-## Tier 4 and so out of Veil's tree.)
+## Slumber lays the file asleep when it fits and Doom is cooling (Veil ruling C9: it took Nuclear Nova's slot, which the Veil tree no longer
+## reaches; the gate wins with it, ruling VE4).
 static func act_veil(bc, ctx: Dictionary) -> String:
 	var d := ctx.d as SilenceWitnessDirector
 	if d == null:
@@ -480,12 +477,12 @@ static func act_veil(bc, ctx: Dictionary) -> String:
 			rules.cast(slots.doom, _mate_aim(w, mates[0]))
 			_noted(d, ctx.memo, r)
 			return "doom the mate nearest the witness"
-		if _eta(r) <= SW_URGENT and bc._slot_wait(rules, slots, "doom") > _eta(r) - 3.0 and bc._slot_ready(rules, slots, "nova"):
-			var blast := _nova_aim(file)
-			if blast.has("at"):
-				rules.cast(slots.nova, blast.at)
+		if _eta(r) <= SW_URGENT and bc._slot_wait(rules, slots, "doom") > _eta(r) - 3.0 and bc._slot_ready(rules, slots, "slumber"):
+			var lull := _slumber_aim(file)
+			if lull.has("at"):
+				rules.cast(slots.slumber, lull.at)
 				_noted(d, ctx.memo, r)
-				return _said("nova over the file", file)
+				return _said("slumber over the file", file)
 	return ""
 
 
@@ -509,12 +506,13 @@ static func _mate_aim(w: Person, m: Person) -> Vector2:
 	return aim if aim.distance_to(w.ground_pos) > SilentDoom.RADIUS + 0.05 else m.ground_pos
 
 
-## Where Nuclear Nova falls so the whole file stands inside its blast when the front has spread (T_BLAST and the wave, led), a unit and a half inside its
-## RADIUS: {at}, or {} when the file is spread wider than that.
-static func _nova_aim(file: Array[Person]) -> Dictionary:
-	var pts := _led(file, _NOVA.T_BLAST + _NOVA.WAVE_TIME)
+## Where Slumber falls so the whole file stands inside it (Veil ruling C9: the Veil tree no longer reaches Nuclear Nova; Slumber took its
+## slot): the circle round the file as it stands, inside the light ring (VeilRules SLUMBER RADIUS): {at}, or {} when the file is spread wider.
+## Whether this Hunt is still won is Task 13's.
+static func _slumber_aim(file: Array[Person]) -> Dictionary:
+	var pts := _led(file, 0.0)
 	var c := _enclose(pts)
-	if float(c.r) > _NOVA.RADIUS - 1.5:
+	if float(c.r) > VeilRules.size("slumber", "RADIUS", false):
 		return {}
 	return {"at": c.at}
 

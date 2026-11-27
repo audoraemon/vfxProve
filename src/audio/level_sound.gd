@@ -19,11 +19,11 @@ const WEIGHT := {
 }
 
 ## Every skill-tree power's main cue and school: its loudest played cue (`python tools/audio/loudness.py --table`), or its cast
-## where that is a loop or plays only sometimes (Tornado, the Serpent, the Wisp, SAINT).
+## where that is a loop or plays only sometimes (Tornado, the Serpent, the Wisp, SAINT, Evernight).
 const MAIN := {
 	"smite": [&"smite_strike", "ruin"], "ember": [&"q_ember_hit", "ruin"], "tornado": [&"tn_form", "ruin"], "scatter": [&"scatter_boom", "ruin"], "solaris": [&"solar_blaze", "ruin"], "dragon": [&"dr_ignite", "ruin"], "tsunami": [&"ts_rise", "ruin"], "cinder": [&"cf_rise", "ruin"], "tempest": [&"sky_clap", "ruin"], "shatter": [&"quake_open", "ruin"],
 	"skylift": [&"q_skylift", "passage"], "windfall": [&"wf_impact", "passage"], "houndgate": [&"hg_doors", "passage"], "hellspark": [&"hm_ignite", "passage"], "deep": [&"deep_burst", "passage"], "mirror": [&"q_mirror", "passage"], "allroads": [&"q_allroads", "passage"], "foldward": [&"q_foldward", "passage"], "deaddoors": [&"dead_door", "passage"], "heavendoor": [&"hd_land", "passage"],
-	"doom": [&"q_doom", "veil"], "blight": [&"q_blight", "veil"],
+	"doom": [&"q_doom", "veil"], "blight": [&"q_blight", "veil"], "slumber": [&"v_slumber", "veil"], "cloak": [&"v_cloak", "veil"], "unseen": [&"q_unseen", "veil"], "dreamless": [&"v_dreamless", "veil"], "dread": [&"v_dread", "veil"], "shadowplay": [&"v_shadowplay", "veil"], "swallow": [&"v_swallow_take", "veil"], "evernight": [&"v_evernight", "veil"],
 	"noleave": [&"q_noleave", "decree"], "breath": [&"br_hush", "decree"], "redefine": [&"q_redefine", "decree"], "bound": [&"q_bound", "decree"], "erase": [&"er_crash", "decree"], "disorder": [&"di_bell", "decree"], "eminent": [&"ed_roar", "decree"], "fenced": [&"fe_posts", "decree"], "cage": [&"cg_shut", "decree"], "sealed": [&"q_sealed_hit", "decree"],
 	"deathmark": [&"q_deathmark_hit", "death"], "raise": [&"raise_rise", "death"], "pestilence": [&"q_pestilence", "death"], "gravecall": [&"gravecall_rise", "death"], "guise": [&"q_guise", "death"], "walker": [&"q_walker", "death"], "gatebelow": [&"gatebelow_open", "death"], "pale": [&"pale_drone", "death"], "serpent": [&"serpent_rise", "death"], "gravetide": [&"gravetide_rise", "death"],
 	"whisper": [&"q_whisper", "dominion"], "discord": [&"q_discord", "dominion"], "madness": [&"q_madness", "dominion"], "wisp": [&"q_wisp", "dominion"], "clearmind": [&"q_clearmind", "dominion"], "saint": [&"q_saint", "dominion"], "sanctuary": [&"q_sanctuary", "dominion"], "anathema": [&"q_anathema", "dominion"], "voice": [&"dom_speak", "dominion"], "schism": [&"dom_break", "dominion"],

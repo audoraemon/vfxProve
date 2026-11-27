@@ -2,7 +2,7 @@
 for the Prepare cards and 42x42 for the HUD slots: v0.05's quiet powers (Silent Doom, Blight), v0.06's (Will-o'-Wisp,
 Thornwall, Discord, Pestilence), v0.08's Mind Whisper, and Decree's
 Breathing Is Prohibited, Redefine, Bound in Law, Erasing Distance, Disorder, Eminent Domain, Fenced Rule, The Closing Cage
-and The Sealed Verdict.
+and The Sealed Verdict; and flat placeholders for the seven new Veil powers (VEIL_KEYS).
 
 usage: python tools/dev/make_power_icons.py [key ...]   (all by default; writes assets/pixellab/icons/<key>.png and
        hud/<key>.png)
@@ -881,9 +881,70 @@ def sealed():
     finish(rgb, "sealed")
 
 
+def veil_glyph(key):
+    """Placeholder for the Veil powers (Task 1 of the Veil build; painted icons come later): a dark field, a violet dusk glow and
+    one violet glyph that names the power."""
+    x, y = grid()
+    r = np.hypot(x, y)
+    n = noise(sum(map(ord, key)), 6)
+    rgb = np.zeros((SIZE, SIZE, 3))
+    rgb[:] = (7, 5, 12)
+    rgb = blend(rgb, (59, 20, 112), np.exp(-(r / 30.0) ** 2) * (0.7 + 0.3 * n))
+    violet, silver, dark = (185, 140, 255), (207, 211, 230), (7, 5, 12)
+
+    def disc(cx, cy, rad, col, a=1.0, sy=1.0):
+        return blend(rgb, col, np.clip((rad - np.hypot(x - cx, (y - cy) * sy)) / 0.8, 0.0, 1.0) * a)
+
+    def ring(cx, cy, rad, w, col, a=1.0):
+        d = np.abs(np.hypot(x - cx, y - cy) - rad)
+        return blend(rgb, col, np.clip((w - d) / 0.7, 0.0, 1.0) * a)
+
+    if key == "slumber":  # a crescent moon
+        rgb = disc(0, 0, 20, violet)
+        rgb = disc(8, -6, 18, (12, 8, 22))
+    elif key == "cloak":  # a hood: a dark cowl with a violet hem
+        rgb = disc(0, 4, 22, violet, sy=0.9)
+        rgb = disc(0, 8, 18, dark, sy=0.9)
+        rgb = blend(rgb, dark, (y > 18).astype(float))
+    elif key == "dreamless":  # a closed eye: one lid line and lashes
+        d = np.abs(np.hypot(x, y + 12) - 24)
+        rgb = blend(rgb, violet, np.clip((2.0 - d) / 0.7, 0.0, 1.0) * (y > 0))
+        for k in (-12, 0, 12):
+            d = np.hypot(x - k * 1.15, y - 18 + abs(k) * 0.25)
+            rgb = blend(rgb, violet, np.clip((2.0 - d) / 0.7, 0.0, 1.0))
+    elif key == "dread":  # an open eye in the dark, staring
+        rgb = disc(0, 0, 24, violet, sy=2.2)
+        rgb = disc(0, 0, 21, dark, sy=2.2)
+        rgb = disc(0, 0, 7, violet)
+        rgb = disc(0, 0, 3, dark)
+    elif key == "shadowplay":  # a standing silhouette with a violet edge
+        rgb = disc(0, -16, 8, violet)
+        rgb = disc(0, -16, 6.5, dark)
+        body = np.clip((9.0 - np.abs(x)) / 0.8, 0.0, 1.0) * np.clip((y + 6.0) / 0.8, 0.0, 1.0) * np.clip((26.0 - y) / 0.8, 0.0, 1.0)
+        edge = np.clip((10.5 - np.abs(x)) / 0.8, 0.0, 1.0) * np.clip((y + 7.5) / 0.8, 0.0, 1.0) * np.clip((27.5 - y) / 0.8, 0.0, 1.0)
+        rgb = blend(rgb, violet, edge)
+        rgb = blend(rgb, dark, body)
+    elif key == "swallow":  # a black circle with a thin silver-violet rim
+        rgb = ring(0, 0, 24, 2.0, violet)
+        rgb = ring(0, 0, 21, 0.9, silver, 0.6)
+        rgb = disc(0, 0, 20, (0, 0, 0))
+    elif key == "evernight":  # a pale moon and three stars
+        rgb = disc(-6, 4, 16, silver)
+        rgb = disc(2, -2, 15, (12, 8, 22))
+        for sx, sy_ in ((18, -20), (22, 10), (-20, -22)):
+            for dx, dy in ((0, 0), (2, 0), (-2, 0), (0, 2), (0, -2)):
+                rgb = blend(rgb, violet, np.clip((1.2 - np.hypot(x - sx - dx, y - sy_ - dy)) / 0.6, 0.0, 1.0))
+    rgb *= np.clip(1.3 - (r / 50.0) ** 2, 0.3, 1.0)[..., None]
+    finish(rgb, key)
+
+
+VEIL_KEYS = ["slumber", "cloak", "dreamless", "dread", "shadowplay", "swallow", "evernight"]
+
 PAINTERS = {"doom": None, "blight": None, "wisp": wisp, "thorns": thorns, "discord": discord, "pestilence": pestilence,
             "whisper": whisper, "breath": breath, "redefine": redefine, "bound": bound,
             "erase": erase, "disorder": disorder, "eminent": eminent, "fenced": fenced, "cage": cage, "sealed": sealed}
+for _k in VEIL_KEYS:
+    PAINTERS[_k] = (lambda k: lambda: veil_glyph(k))(_k)
 
 
 if __name__ == "__main__":

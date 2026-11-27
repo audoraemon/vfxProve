@@ -159,7 +159,7 @@ func step(delta: float) -> void:
 	_apply_slow()
 	if state == State.WALKING:
 		_trail_add(carrier.ground_pos)
-		if carrier.ground_pos.distance_to(foot) <= REACH:
+		if carrier.ground_pos.distance_to(foot) <= REACH and not carrier.veil_blind():  # (Veil C13: a shadow brings no flame)
 			state = State.VIGIL
 			_stand = carrier.ground_pos
 			rules.banner.emit(VIGIL)

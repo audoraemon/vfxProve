@@ -144,6 +144,15 @@ const AREAS := {
 	"clearmind": {"shape": "circle", "r": 5.0},
 	# UnseenHourFx.RADIUS
 	"unseen": {"shape": "circle", "r": 5.0},
+	# The Veil's seven at their light size (VeilRules.SIZES; area() draws the dark one over dark ground, VeilRules.RING). Evernight
+	# covers the whole town: the mark is only where the click lands (where its wave starts), as Tempest's.
+	"slumber": {"shape": "circle", "r": 1.5},
+	"cloak": {"shape": "circle", "r": 2.0},
+	"dreamless": {"shape": "circle", "r": 1.0},
+	"dread": {"shape": "circle", "r": 6.0},
+	"shadowplay": {"shape": "circle", "r": 3.0},
+	"swallow": {"shape": "circle", "r": 10.0},
+	"evernight": {"shape": "circle", "r": 0.6},
 	# CurfewFx.RADIUS
 	"curfew": {"shape": "circle", "r": 4.0},
 	# EarthshatterFx: the run from the first click toward the second, HALF wide, MAX_LENGTH at most ("path")
@@ -284,6 +293,9 @@ var _at := Vector2.ZERO
 ## Whether the preview's edge was last drawn as ready (gold) or not (red): the cooldown, the busy lock and a storm's Called Bolts all
 ## change it without the cursor moving, so _process() redraws when it flips.
 var _edge_ready := true
+## The law of the Veil's tag the ring was last drawn with (ring_tag()): a dusk patch laid or fading under a still cursor changes the size,
+## so _process() redraws when it no longer matches (ring_stale()).
+var _drawn_tag := ""
 ## Grave Tide's graves for the preview (grave_spots()), kept for the walk grid they were found on, at its version.
 var _graves: Array[Vector2] = []
 var _graves_grid: WalkGrid
@@ -724,6 +736,12 @@ func area() -> Dictionary:
 	if _wheel_fx() != null:
 		return AREAS["whisper"]  # a follow-up through Mind Whisper's wheel shows the whisper's pick ring
 	var a := area_at(_rules.key(slot), _aim_level())
+	var veil := ring_tag()
+	if veil != "":
+		# The law of the Veil: the ring is drawn at the size the cast would get on the ground under the cursor.
+		var key := _rules.key(slot)
+		a = a.duplicate()
+		a["r"] = VeilRules.size(key, String(VeilRules.RING[key]), veil == "DARK", _aim_level())
 	var own: Dictionary = mode().get("area", {})
 	if own.is_empty():
 		return a
@@ -731,6 +749,14 @@ func area() -> Dictionary:
 	var out := a.duplicate()
 	out.merge(own, true)
 	return out
+
+
+## The law of the Veil's tag for the focused power's ring: "DARK" over dark ground (Crowd.in_dark() at the press), "LIGHT" over lit
+## ground, "" for a power whose ring keeps one size (not in VeilRules.RING) or with no crowd.
+func ring_tag() -> String:
+	if slot < 0 or _crowd == null or not VeilRules.RING.has(_rules.key(slot)):
+		return ""
+	return "DARK" if _crowd.in_dark(_press) else "LIGHT"
 
 
 ## The radius the preview rings a "circle" area at: its "r", widened for a drag that grows it ("grow": Smite's Gathered Storm, as far as
@@ -1156,6 +1182,14 @@ func _process(_delta: float) -> void:
 		return
 	if (_rules.refusal(slot) == "" or _rules.can_recast(slot)) != _edge_ready:
 		queue_redraw()
+	elif ring_stale():
+		queue_redraw()
+
+
+## Whether the dark or light under the cursor changed since the ring was drawn (a patch laid or faded under a still cursor): one cheap
+## question a frame, and only for a Veil power whose ring has two sizes ("" == "" for every other).
+func ring_stale() -> bool:
+	return ring_tag() != _drawn_tag
 
 
 func _draw() -> void:
@@ -1164,11 +1198,17 @@ func _draw() -> void:
 		return
 	# A power that cannot be cast still shows its area, in red, so the player can aim while it comes back.
 	_edge_ready = _rules.refusal(slot) == "" or _rules.can_recast(slot)
+	_drawn_tag = ring_tag()
 	var edge := COL_EDGE if _edge_ready else COL_BAD
 	match String(a.shape):
 		"circle":
 			if not _whisper_ordering():
 				_ring(_press, preview_r(), edge)
+			var tag := ring_tag()
+			if tag != "":
+				# Which size this cast would get here, by the ring's lower edge.
+				_label(_press + Vector2(1.0, 1.0).normalized() * (preview_r() + 0.45), tag,
+					VeilParts.VEIL if tag == "DARK" else COL_EDGE)
 			if a.has("inner"):
 				_ring(_press, float(a.inner), COL_INNER)
 			if float(a.get("roam", 0.0)) > 0.0:
@@ -1307,8 +1347,13 @@ func _draw() -> void:
 					_ring(who.ground_pos, 0.3, COL_DIVINE)
 		"doom":
 			# Who it would take.
-			for v in SilentDoom.victims_at(_crowd._field, _press):
+			for v in SilentDoom.victims_at(_crowd._field, _press, float(area().get("r", SilentDoom.RADIUS))):
 				_ring(v.ground_pos, 0.22, COL_INNER)
+		"slumber", "cloak", "dreamless", "shadowplay":
+			# Who it would take, at the size this ground gives (the cast's own pick and its own numbers); the ones the cast would take
+			# at once rather than set to rest or make a shadow of, in the kill colour.
+			for m in veil_ringed(String(_rules.key(slot)), _crowd, _press, _crowd != null and _crowd.in_dark(_press), _rules.level_of(slot)):
+				_ring(m.p.ground_pos, 0.22, COL_MAD if bool(m.kill) else COL_INNER)
 		"oath", "echo":
 			# Whom it would bind, or start with.
 			for p in OathboundFx.bound_at(_crowd._field, first if placed else _press, 5 if _rules.key(slot) == "echo" else 4):
@@ -1404,13 +1449,18 @@ func _draw() -> void:
 				for m in bodies_marked(_crowd.remains, _press, false, true):
 					_death_mark(m.pos, COL_BONE, bool(m.lead))
 		"blight":
-			# What it would ruin, or a red ring for nothing in reach.
-			var mine := _rules.director.blight_target(_press) if _rules.director != null else Vector2.INF
-			var s := BlightFx.target(_crowd._env, _press) if mine == Vector2.INF else null
+			# What it would take (BlightFx.choose(), the cast's own order): a director's thing, a building, a person -- in the dark the
+			# others who would fall ill with them -- or a red ring for nothing in reach (the cast is refused).
+			var took := BlightFx.choose(_crowd._env, _crowd, _rules.director, _press)
+			var mine: Vector2 = took.at if took.kind == &"director" else Vector2.INF
+			var s: Structure = took.s
 			if mine != Vector2.INF:
 				# A director's own thing (v0.11.1: an unguarded standard or mirror), ringed as a structure is outlined; a guarded one
 				# only takes the banner, so its ring is red.
 				_ring(mine, 0.45, COL_ROT if _rules.director.blight_takes(mine) else COL_BAD)
+			elif took.kind == &"person":
+				for p in blight_ill(_crowd, took.p, _crowd != null and _crowd.in_dark(_press), _rules.level_of(slot)):
+					_ring(p.ground_pos, 0.22, COL_ROT)
 			elif s != null:
 				var r := s.footprint.grow(0.08)
 				for pass_i in 2:
@@ -1671,3 +1721,40 @@ func _cone(from: Vector2, r: float, arc: float, col: Color, start: float) -> voi
 			points.append(from + Vector2.RIGHT.rotated(start + arc * float(i) / float(steps)) * (r + grow))
 		points.append(from)
 		draw_polyline(points, SHADE if pass_i == 0 else col, -1.0)
+
+
+## Who a Veil power's cast at `at` takes hold of, from the power's own pick and the size VeilRules gives on this ground (`dark`: the
+## cast's dark, Crowd.in_dark() under the click): [{"p": Person, "kill": bool}], `kill` for one the cast takes at once instead of the
+## power's plain effect -- Dreamless on one already asleep or a shadow, Shadow Play in the dark on a soldier (his shadow is taken at the
+## end). Empty for any other key or no crowd. `level` is the slot's: the numbers are that level's.
+static func veil_ringed(key: String, crowd: Crowd, at: Vector2, dark: bool, level := 1) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if crowd == null or crowd._field == null:
+		return out
+	var who: Array[Person] = []
+	match key:
+		"slumber":
+			who = SlumberFx.sleepers_at(crowd._field, at, VeilRules.size("slumber", "RADIUS", dark, level))
+		"cloak":
+			who = CloakOfNightFx.marked_at(crowd._field, at, VeilRules.size("cloak", "MARK_R", dark, level), int(VeilRules.size("cloak", "MOST", dark, level)))
+		"dreamless":
+			who = DreamlessFx.victims_at(crowd._field, at, VeilRules.size("dreamless", "REACH", dark, level), int(VeilRules.size("dreamless", "MOST", dark, level)))
+		"shadowplay":
+			who = ShadowPlayFx.shadows_at(crowd._field, at, VeilRules.size("shadowplay", "RADIUS", dark, level))
+		_:
+			return out
+	for p in who:
+		var kill := false
+		if key == "dreamless":
+			kill = p.is_asleep() or p.is_shadow()
+		elif key == "shadowplay":
+			kill = dark and p.soldier
+		out.append({"p": p, "kill": kill})
+	return out
+
+
+## Who falls ill when Blight takes `p` at `dark` (Crowd.in_dark() under the click, as Rules.cast() stamps it): the cast's own count.
+## Blight has no ring radius (VeilRules.RING), so ring_tag() says nothing for it: the dark is asked of the crowd directly.
+static func blight_ill(crowd: Crowd, p: Person, dark: bool, level := 1) -> Array[Person]:
+	return BlightFx.sick_with(crowd, p, int(VeilRules.size("blight", "ILL_MOST", dark, level)),
+			float(PowerBook.level_stat("blight", level, "ILL_REACH", BlightFx.ILL_REACH)))

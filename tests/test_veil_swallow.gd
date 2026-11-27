@@ -1,0 +1,781 @@
+extends RefCounted
+## Veil Task 10: The Swallowing Dark (spec 5.9). A black circle grows from the click at GROW a second -- 0 to 10 in the light, from the
+## dusk patch it was cast in to 14 in the dark -- unseen: no danger, no alarm, nobody runs, and one who walks out in time lives. At full
+## size everything inside is gone without a sound (people &"void", animals, decor, buildings wholly inside with their shelterers; the
+## spared stand), PER_FRAME removals a frame at most, all within 1 s; nothing is remembered; the emptied ground is dusk for 20 s. An
+## effect ended before full size takes nothing. Through Rules the other slots unlock once the circle has opened (C16).
+
+const DT := 1.0 / 60.0
+
+
+## A director that needs one building standing and wants another down (its objective: a Raze target, a granary, the stocks).
+class TestDirector extends MissionDirector:
+	var keep: Structure
+	var want: Structure
+
+	func needs_standing(s: Structure) -> bool:
+		return s != null and s == keep
+
+	func wants_down(s: Structure) -> bool:
+		return s != null and s == want
+
+
+static func _setup() -> Array:
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var grid := WalkGrid.new().setup(env, town)
+	var field := EnemyField.new()
+	field.env = env
+	field.bounds = TownLayout.MAP
+	var world := Node2D.new()
+	var crowd := Crowd.new().setup(field, env, town, grid, world, 5)
+	crowd.profile = ResponseProfile.for_tier(ResponseProfile.Tier.PREPARED)
+	crowd.spawn()
+	crowd.dusk.enabled = true
+	crowd.remains.enabled = true
+	var ctx := FxContext.new()
+	ctx.env = env
+	ctx.field = field
+	ctx.crowd = crowd
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.rng.seed = 3
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	ctx.rules = Rules.new()
+	return [crowd, env, grid, field, world, ctx, town]
+
+
+static func _done(made: Array) -> void:
+	var crowd: Crowd = made[0]
+	for s in crowd.footholds.duplicate():
+		BlightFx.heal(crowd, made[1], s)
+	crowd.clear()
+	var ctx: FxContext = made[5]
+	ctx.rules.free()
+	ctx.overhead.free()
+	ctx.ground.free()
+	(made[4] as Node).free()
+
+
+static func _cast(ctx: FxContext, at: Vector2, dark := false) -> TheSwallowingDarkFx:
+	return FxTimeline.cast(TheSwallowingDarkFx, ctx, at, {"dark": dark}) as TheSwallowingDarkFx
+
+
+## Steps the effect `seconds` in frames of DT.
+static func _go(fx: FxTimeline, seconds: float) -> void:
+	for i in roundi(seconds / DT):
+		if not is_instance_valid(fx) or fx.finished:
+			return
+		fx._process(DT)
+
+
+## Plain houses, by instance id.
+static func _houses(env: EnvironmentField) -> Array[Structure]:
+	var out: Array[Structure] = []
+	for s in env.structures():
+		if is_instance_valid(s) and s.kind == Structure.Kind.HOUSE and not s.walkable:
+			out.append(s)
+	out.sort_custom(func(a: Structure, b: Structure) -> bool: return a.get_instance_id() < b.get_instance_id())
+	return out
+
+
+## The living people within `r` of `at`, out in the open.
+static func _out_within(crowd: Crowd, at: Vector2, r: float) -> Array[Person]:
+	var out: Array[Person] = []
+	for p in crowd.citizens + crowd.soldiers:
+		if is_instance_valid(p) and p.is_alive() and not p.inside and p.ground_pos.distance_to(at) <= r:
+			out.append(p)
+	return out
+
+
+static func run(t) -> void:
+	_wholly(t)
+	var made := _setup()
+	var env: EnvironmentField = made[1]
+	var grid: WalkGrid = made[2]
+	t.check(env.decor().size() > 0 and _houses(env).size() > 10, "a town with decor and houses")
+	_sizes(t, made)
+	_unlocks(t, made)
+	var shelter := _shelter_site(made)
+	t.check(shelter != null, "a shelter that is not spared exists")
+	# The teardown site: the house farthest from the shelter, so the big dark cast leaves it be.
+	var far: Structure = null
+	if shelter != null:
+		for h in _houses(env):
+			if far == null or h.center().distance_to(shelter.center()) > far.center().distance_to(shelter.center()):
+				far = h
+		_teardown(t, made, far)
+		_full(t, made, shelter, grid)
+		_control(t, made, far)
+	_done(made)
+	_mission_things(t)
+	_restart(t)
+	_no_crowd(t)
+	_market(t)
+	_look(t)
+	_sound(t)
+
+
+static func _wholly(t) -> void:
+	var s := Structure.new()
+	s.footprint = Rect2(Vector2(1.0, 1.0), Vector2(2.0, 1.0))
+	var far := Vector2(3.0, 2.0).length()
+	t.check(TheSwallowingDarkFx.wholly_inside(s, Vector2.ZERO, far + 0.001), "all four corners within r: wholly inside")
+	t.check(not TheSwallowingDarkFx.wholly_inside(s, Vector2.ZERO, far - 0.01), "one corner outside: not wholly inside")
+	t.check(not TheSwallowingDarkFx.wholly_inside(null, Vector2.ZERO, 99.0), "no structure: not inside")
+	s.free()
+
+
+## Light: 0 at the cast, 5.0 after 10 s, full (10.0) at 20 s. Dark in a dusk patch of 3: starts at 3.0, full at 14.0 after 22 s.
+static func _sizes(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var ctx: FxContext = made[5]
+	var at := Vector2(-200.0, -200.0)  # far off the map: nothing to take
+	var fx := _cast(ctx, at)
+	t.check(fx.radius() == 0.0 and is_equal_approx(fx.full_r, 10.0) and is_equal_approx(fx.t_full, 20.0) and fx.busy > 0.0,
+		"light: radius 0 at the cast, full 10 at 20 s (%.2f, %.2f, %.2f)" % [fx.radius(), fx.full_r, fx.t_full])
+	_go(fx, 10.0)
+	t.check(absf(fx.radius() - 5.0) < 0.02 and not fx.swallowed, "light: 5.0 after 10 s (%.3f)" % fx.radius())
+	_go(fx, 10.0)
+	t.check(is_equal_approx(fx.radius(), 10.0) and fx.swallowed, "light: full 10 at 20 s (%.3f)" % fx.radius())
+	fx.end_now()
+	crowd.dusk.clear()
+	crowd.lay_dusk(at, 3.0, 60.0)
+	fx = _cast(ctx, at, true)
+	t.check(is_equal_approx(fx.radius(), 3.0) and is_equal_approx(fx.full_r, 14.0) and is_equal_approx(fx.t_full, 22.0),
+		"dark in a dusk patch of 3: starts at 3.0, full 14.0 after 22 s (%.2f, %.2f, %.2f)" % [fx.radius(), fx.full_r, fx.t_full])
+	_go(fx, 21.9)
+	t.check(not fx.swallowed and fx.radius() < 14.0, "dark: not full at 21.9 s")
+	_go(fx, 0.2)
+	t.check(fx.swallowed and is_equal_approx(fx.radius(), 14.0), "dark: full at 22 s")
+	fx.end_now()
+	crowd.dusk.clear()
+	# Review pass 2 (sound): a growth shorter than the heave (a dusk patch of 13.5: full 14 after 1 s) still gives its rush, started that
+	# far into the cue so it ends on the fold, and the fold's hit at full size.
+	var spy := _spy()
+	ctx.sfx = spy
+	crowd.lay_dusk(at, 13.5, 60.0)
+	fx = _cast(ctx, at, true)
+	spy.fx = fx
+	t.check(is_equal_approx(fx.t_full, 1.0), "dark in a dusk patch of 13.5: full after 1 s (%.2f)" % fx.t_full)
+	_go(fx, DT)
+	var short_heave := spy.when(&"v_swallow_heave")
+	t.check(short_heave.size() == 1 and short_heave[0] <= DT + 0.001
+		and absf(fx.rush_from - (TheSwallowingDarkFx.HEAVE - fx.t_full + DT)) < 0.002,
+		"short growth: the rush starts at once, %.2f s into its cue, so it still ends on the fold (%s)" % [fx.rush_from, short_heave])
+	_go(fx, 1.0)
+	var short_take := spy.when(&"v_swallow_take")
+	t.check(short_take.size() == 1 and absf(short_take[0] - 1.0) <= DT + 0.001 and spy.faded_cue(&"v_swallow_loop"),
+		"short growth: the fold hits at full size (%s) and the rumble is let go" % [short_take])
+	fx.end_now()
+	crowd.dusk.clear()
+	ctx.sfx = null
+	spy.queue_free()
+
+
+## C16: through Rules the other slots are locked only until the circle has opened (busy = T_OPEN); after it Silent Doom casts while the
+## circle still grows.
+static func _unlocks(t, made: Array) -> void:
+	var crowd: Crowd = made[0]
+	var rules := Rules.new().setup(PackedStringArray(["swallow", "doom"]), null, made[1], made[3], crowd, made[6])
+	var casts: Array = []
+	rules.caster = func(s: GDScript, g: Vector2, e: Dictionary) -> FxTimeline:
+		var fx := FxTimeline.cast(s, made[5], g, e)
+		casts.append(fx)
+		return fx
+	var refused: Array = []
+	rules.cast_refused.connect(func(slot: int, why: String) -> void: refused.append([slot, why]))
+	var at := Vector2(-200.0, -200.0)
+	var fx := rules.cast(0, at) as TheSwallowingDarkFx
+	t.check(fx != null and refused.is_empty(), "The Swallowing Dark goes out through Rules")
+	if fx == null:
+		rules.free()
+		return
+	var early := rules.cast(1, at + Vector2(-30.0, 0.0))
+	t.check(early == null and refused == [[1, "busy"]] and rules.busy_left() > 0.0, "while it opens the other slots are locked (%s)" % [refused])
+	refused.clear()
+	_go(fx, TheSwallowingDarkFx.T_OPEN + DT)
+	var later := rules.cast(1, at + Vector2(-30.0, 0.0))
+	t.check(later != null and refused.is_empty() and not fx.finished and not fx.swallowed and fx.radius() < fx.full_r,
+		"once it has opened Silent Doom casts while the circle still grows (%s)" % [refused])
+	if later != null and is_instance_valid(later):
+		later.end_now()
+	fx.end_now()
+	rules.free()
+	crowd.dusk.clear()
+
+
+static func _marks(ctx: FxContext) -> int:
+	var n := 0
+	for c in ctx.ground.get_children():
+		if c is TheSwallowingDarkFx.BareEarth:
+			n += 1
+	return n
+
+
+## A shelter building that is not spared and has a house wholly inside 14 of it, another not wholly inside, and decor near.
+static func _shelter_site(made: Array) -> Structure:
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var best: Structure = null
+	for s in crowd.shelters.shelters:
+		if s.role == &"temple" or MissionKeeps.spared(s, crowd, null):
+			continue
+		var whole := 0
+		var edge := 0
+		for h in _houses(env):
+			if h == s:
+				continue
+			if TheSwallowingDarkFx.wholly_inside(h, s.center(), 14.0):
+				whole += 1
+			elif h.distance_to(s.center()) < 14.0 and h.center().distance_to(s.center()) <= 14.0:
+				edge += 1
+		if whole >= 3 and edge >= 1 and (best == null or s.get_instance_id() < best.get_instance_id()):
+			best = s
+	return best
+
+
+## The dark cast at a shelter: growth unseen, then everything inside goes.
+static func _full(t, made: Array, s0: Structure, grid: WalkGrid) -> void:
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var field: EnemyField = made[3]
+	var ctx: FxContext = made[5]
+	var at := s0.center()
+	const R := 14.0
+	# The houses: wholly inside (one a foothold, one the director keeps) and one with a corner outside.
+	var whole: Array[Structure] = []
+	var edge: Structure = null
+	for h in _houses(env):
+		if h == s0:
+			continue
+		if TheSwallowingDarkFx.wholly_inside(h, at, R):
+			whole.append(h)
+		elif edge == null and h.distance_to(at) < R and h.center().distance_to(at) <= R:
+			edge = h
+	var gone_h := whole[0]
+	var foothold := whole[1]
+	var kept := whole[2]
+	var d := TestDirector.new()
+	d.keep = kept
+	ctx.rules.director = d
+	BlightFx.plant(crowd, env, foothold, 3.0)
+	t.check(crowd.footholds.has(foothold), "a blighted foothold stands inside")
+	# Animals (the pack is off in tests): three inside, one outside.
+	if crowd.animals == null:
+		crowd.animals = AnimalPack.new().setup(crowd, grid, made[4], 5)
+		(made[4] as Node).add_child(crowd.animals)
+		crowd.animals.spawn(4)
+	var pets := crowd.animals.living()
+	t.check(pets.size() == 4, "four animals")
+	for i in pets.size():
+		pets[i].ground_pos = at + (Vector2(1.0 + float(i), 1.0) if i < 3 else Vector2(R + 4.0, 0.0))
+	var pet_out: Animal = pets[3]
+	t.check(not grid.walkable(gone_h.center()), "the walk grid is closed at the house's centre before")
+	# People: one sheltering in s0, one inside who stays, one who walks out in time.
+	var sh: Person = crowd.citizens[0]
+	crowd.shelters._enter(sh, s0)
+	(crowd.shelters.shelters[s0].inside as Array).append(sh)
+	var a: Person = crowd.citizens[1]
+	a.ground_pos = at + Vector2(4.0, 0.0)
+	a.inside = false
+	var b: Person = crowd.citizens[2]
+	b.ground_pos = at + Vector2(5.0, 1.0)
+	b.inside = false
+	# The kept house made a shelter (C20): one shelters in it at full size, one walks in from the open after full size. Both live while
+	# it stands; the one sheltering in s0 (taken) is the control.
+	crowd.shelters.shelters[kept] = {"inside": [], "coming": [], "clear": 0.0}
+	var k: Person = crowd.citizens[6]
+	crowd.shelters._enter(k, kept)
+	(crowd.shelters.shelters[kept].inside as Array).append(k)
+	var late: Person = crowd.citizens[7]
+	late.ground_pos = at + Vector2(0.3, 0.2)
+	late.inside = false
+	# Remains: one lying inside, one outside (written to the ledger as a body would be; their people then go far off).
+	var lay_remain := func(p: Person, g: Vector2) -> Remains.Remain:
+		p.ground_pos = g
+		crowd.remains._on_killed(p, &"deathmark")
+		p.ground_pos = Vector2(-27.0, -27.0)
+		p.inside = false
+		return crowd.remains.near(g, 0.01)[0]
+	var r_in: Remains.Remain = lay_remain.call(crowd.citizens[4], at + Vector2(6.0, -1.0))
+	var r_out: Remains.Remain = lay_remain.call(crowd.citizens[5], at + Vector2(R + 5.0, 0.0))
+	crowd.dusk.clear()
+	crowd.lay_dusk(at, 3.0, 120.0)
+	var kinds := {}
+	var on_kill := func(e: DummyEnemy, kind: StringName) -> void: kinds[e] = kind
+	field.enemy_killed.connect(on_kill)
+	var added: Array = []
+	var on_add := func(x: Structure) -> void: added.append(x)
+	env.structure_added.connect(on_add)
+	var alarm := crowd.alarm
+	var threats := crowd.threats._next
+	var events: int = crowd.alarms._events.size()
+	var remains := crowd.remains.all().size()
+	var structures := env.structures().size()
+	var fx := _cast(ctx, at, true)
+	t.check(is_equal_approx(fx.t_full, 22.0), "dark at the shelter: full after 22 s")
+	# Growing: unseen. A keeps his place (pinned) and must never take fright.
+	var fled := false
+	var heard := false
+	var walked := false
+	var inside: Array[Person] = []
+	var decor_in: Array[Decor] = []
+	var animals_in := 0
+	while not fx.swallowed and not fx.finished:
+		if fx.t >= fx.t_full - 2.0 * DT and inside.is_empty():
+			inside = _out_within(crowd, at, R)
+			for dd in env.decor():
+				if dd.at.distance_to(at) <= R:
+					decor_in.append(dd)
+			animals_in = crowd.animals.in_radius(at, R).size() if crowd.animals != null else 0
+		a.tick(DT)
+		a.ground_pos = at + Vector2(4.0, 0.0)
+		fled = fled or a.mind == Person.Mind.FLEE or a.mind == Person.Mind.SHELTER
+		heard = heard or crowd.alarm != alarm or crowd.threats._next != threats
+		if fx.t >= 15.0 and not walked:
+			b.ground_pos = at + Vector2(R + 3.0, 0.0)
+			walked = true
+		fx._process(DT)
+	t.check(not heard, "while it grows: no threat registered, alarm unchanged")
+	t.check(not fled and a.is_alive(), "a person inside does not flee")
+	t.check(inside.has(a) and not inside.has(b) and inside.size() > 1, "at full size %d people stand inside" % inside.size())
+	# After full size, before his turn (he stands near the middle: the fold takes the outermost first), one walks into the standing shelter.
+	t.check(late.is_alive() and not late.inside, "the late one is still out in the open at full size")
+	crowd.shelters._enter(late, kept)
+	(crowd.shelters.shelters[kept].inside as Array).append(late)
+	inside.erase(late)
+	# The removals: never more than PER_FRAME a frame, all done within 1 s.
+	var most := fx.removed
+	var frames := 0
+	var last := fx.removed
+	var most_built := structures - env.structures().size()
+	var built := env.structures().size()
+	var gone_all := most_built
+	while fx.left() > 0 and frames < 120:
+		fx._process(DT)
+		frames += 1
+		most = maxi(most, fx.removed - last)
+		last = fx.removed
+		most_built = maxi(most_built, built - env.structures().size())
+		gone_all += built - env.structures().size()
+		built = env.structures().size()
+	t.check(gone_all > TheSwallowingDarkFx.BUILDINGS_PER_FRAME and most_built <= TheSwallowingDarkFx.BUILDINGS_PER_FRAME,
+		"at most BUILDINGS_PER_FRAME buildings a frame (%d of %d)" % [most_built, gone_all])
+	t.check(fx.removed > TheSwallowingDarkFx.PER_FRAME, "more than one frame's worth to take (%d)" % fx.removed)
+	t.check(most <= TheSwallowingDarkFx.PER_FRAME, "never more than PER_FRAME in one frame (%d)" % most)
+	t.check(fx.left() == 0 and float(frames) * DT <= 1.0, "all taken within 1 s of full size (%d frames)" % frames)
+	# Everyone inside, silently.
+	var all_void := true
+	for p in inside:
+		all_void = all_void and not p.is_alive() and kinds.get(p, &"") == &"void" and not p.visible
+	t.check(all_void, "every person within r is taken (&\"void\", hidden)")
+	t.check(b.is_alive(), "the one who walked out lives")
+	t.check(not sh.is_alive() and kinds.get(sh, &"") == &"void" and not crowd.shelters.shelters.has(s0),
+		"the one sheltering in the taken building is taken with it")
+	t.check(animals_in == 3 and crowd.animals.in_radius(at, R).is_empty() and crowd.animals.living() == [pet_out],
+		"every animal inside is gone, the one outside stays (%d were inside)" % animals_in)
+	var decor_left := 0
+	for dd in decor_in:
+		if is_instance_valid(dd) and env.decor().has(dd):
+			decor_left += 1
+	t.check(not decor_in.is_empty() and decor_left == 0, "every decor piece inside is gone (%d of %d left)" % [decor_left, decor_in.size()])
+	# The buildings.
+	t.check(not env.structures().has(gone_h) and gone_h.taken and grid.walkable(gone_h.center()),
+		"a house wholly inside is gone: out of the field, taken, the walk grid open at its centre")
+	t.check(added.is_empty() and not grid.is_pile(grid.world_to_id(gone_h.center())), "no rubble laid")
+	t.check(not env.structures().has(s0) and s0.taken, "the shelter is gone")
+	t.check(edge != null and env.structures().has(edge) and not edge.taken, "a house with a corner outside stands")
+	t.check(env.structures().has(kept) and not kept.taken, "a building MissionKeeps.spared() names stands, though wholly inside")
+	t.check(not crowd.footholds.has(foothold) and not foothold.blighted, "the foothold it took is healed: no foothold points at it")
+	t.check(env.structures().size() < structures, "buildings were removed")
+	# Nothing remembered.
+	t.check(crowd.alarm == alarm and crowd.threats._next == threats and crowd.alarms._events.size() == events,
+		"nothing remembered: alarm unchanged, no threat, no incident")
+	t.check(crowd.remains.all().size() == remains - 1, "no remains left by the void's own kills")
+	t.check(not crowd.remains.all().has(r_in) and crowd.remains.all().has(r_out), "a remain lying inside is taken; one outside stays")
+	t.check(k.is_alive() and k.inside and env.structures().has(kept),
+		"one sheltering in a building that stands is out of reach (VA6)")
+	t.check(late.is_alive() and late.inside, "one who went into a standing building after full size is not taken")
+	# The emptied ground: dusk for 20 s.
+	var rim := at + Vector2(R - 0.1, 0.0)
+	t.check(crowd.dusk.covers(rim), "the emptied ground is dusk")
+	crowd.dusk.step(19.8)
+	t.check(crowd.dusk.covers(rim), "still dusk at 19.8 s")
+	crowd.dusk.step(0.4)
+	t.check(not crowd.dusk.covers(rim), "gone after 20 s")
+	_go(fx, 2.0)
+	t.check(fx.finished, "the effect ends")
+	field.enemy_killed.disconnect(on_kill)
+	env.structure_added.disconnect(on_add)
+	ctx.rules.director = null
+	crowd.dusk.clear()
+
+
+static func _teardown(t, made: Array, h: Structure) -> void:
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var ctx: FxContext = made[5]
+	var c: Person = crowd.citizens[3]
+	c.ground_pos = h.center() + Vector2(0.0, 2.0)
+	c.inside = false
+	var decor := env.decor().size()
+	var marks0 := _marks(ctx)
+	for how in ["end_now", "free"]:
+		crowd.dusk.clear()
+		var fx := _cast(ctx, h.center())
+		_go(fx, 10.0)
+		if how == "end_now":
+			fx.end_now()
+		else:
+			fx.free()
+		t.check(c.is_alive() and env.structures().has(h) and not h.taken and env.decor().size() == decor
+			and crowd.dusk.count() == 0, "%s before full size: nothing taken, no dusk" % how)
+		# The growing disc is the effect's own; the bare earth is laid only at full size.
+		t.check(_marks(ctx) == marks0, "%s before full size: no bare earth laid" % how)
+
+
+## The control on the same path: the same cast left to run takes them.
+static func _control(t, made: Array, h: Structure) -> void:
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var ctx: FxContext = made[5]
+	var c: Person = crowd.citizens[3]
+	c.ground_pos = h.center() + Vector2(0.0, 2.0)
+	c.inside = false
+	crowd.dusk.clear()
+	var marks0 := _marks(ctx)
+	var fx := _cast(ctx, h.center())
+	_go(fx, 22.0)
+	t.check(not c.is_alive() and not env.structures().has(h) and h.taken and crowd.dusk.count() == 1 and _marks(ctx) == marks0 + 1,
+		"(control) left to run: the person and the house are taken, dusk and bare earth laid")
+	t.check(fx.finished, "(control) it ends")
+
+
+## Final review, Critical 1: a building the night wants down (`director.wants_down()`: a Raze target, a granary, the stocks) is never
+## swallowed -- taken, not destroyed, it would stay un-razed for ever. Control: a plain house wholly inside beside it is gone. And the
+## deferred Task 10 case (C20 clarified): one night-indoors at a home point inside the circle (no shelter building) is taken; one at a
+## home point outside is not.
+static func _mission_things(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var field: EnemyField = made[3]
+	var ctx: FxContext = made[5]
+	const R := 10.0
+	var want: Structure = null
+	var plain: Structure = null
+	for h in _houses(env):
+		if MissionKeeps.spared(h, crowd, null):
+			continue
+		var other: Structure = null
+		for o in _houses(env):
+			if o != h and TheSwallowingDarkFx.wholly_inside(o, h.center(), R) and not MissionKeeps.spared(o, crowd, null):
+				other = o
+				break
+		if other != null:
+			want = h
+			plain = other
+			break
+	t.check(want != null and plain != null, "a house with a plain house wholly inside 10 of it")
+	if want == null:
+		_done(made)
+		return
+	var at := want.center()
+	var d := TestDirector.new()
+	d.want = want
+	ctx.rules.director = d
+	t.check(not MissionKeeps.spared(want, crowd, d) and TheSwallowingDarkFx.wholly_inside(want, at, R),
+		"(the wanted building is not spared by MissionKeeps and lies wholly inside)")
+	# Night-indoors at a home point (NightRules / send_home_sick(): inside, hidden, out of the field; no shelter building).
+	var home_in: Person = crowd.citizens[8]
+	var home_out: Person = crowd.citizens[9]
+	for pair in [[home_in, at + Vector2(3.0, 0.0)], [home_out, at + Vector2(R + 3.0, 0.0)]]:
+		var p: Person = pair[0]
+		crowd.shelters.release(p)
+		p.ground_pos = pair[1]
+		p.inside = true
+		p.night_indoors = true
+		p.visible = false
+		field.remove(p)
+	var fx := _cast(ctx, at)
+	_go(fx, 23.0)
+	t.check(fx.finished and fx.swallowed, "(the light cast has run its course)")
+	t.check(env.structures().has(want) and not want.taken and is_instance_valid(want),
+		"a building the night wants down stands after the fold, though wholly inside")
+	t.check(not env.structures().has(plain) and plain.taken, "(control) the plain house beside it is gone")
+	t.check(not home_in.is_alive() and not home_in.visible, "one night-indoors at a home point inside the circle is taken")
+	t.check(home_out.is_alive(), "one night-indoors at a home point outside it is not")
+	ctx.rules.director = null
+	_done(made)
+
+
+## Final review, Critical 2: the bare earth is a lasting ground mark, freed with the rest by Battlefield.clear_effects() (a restart, the
+## Sandbox's R/TAB): before it there is one on the ground plane (control); after it and a frame, none.
+static func _restart(t) -> void:
+	const FxStage := preload("res://tests/fx_stage.gd")
+	var bf := FxStage.make(3)
+	var marks := func() -> int:
+		var n := 0
+		for c in bf.ctx.ground.get_children():
+			if c is TheSwallowingDarkFx.BareEarth and not c.is_queued_for_deletion():
+				n += 1
+		return n
+	var fx := FxTimeline.cast(TheSwallowingDarkFx, bf.ctx, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+	_go(fx, 23.0)
+	t.check(fx.finished and marks.call() == 1, "(control) the fold leaves one bare earth on the ground plane (%d)" % marks.call())
+	bf.clear_effects()
+	t.check(marks.call() == 0, "after clear_effects() no bare earth is left on the ground plane (%d)" % marks.call())
+	FxStage.drop(bf)
+
+
+## No crowd, no rules (the VFX Sandbox): it grows at the light size, takes the town's buildings and decor and finishes.
+static func _no_crowd(t) -> void:
+	var env := EnvironmentField.new()
+	var town := Town.new()
+	town.build(env)
+	var ctx := FxContext.new()
+	ctx.env = env
+	ctx.rng = RandomNumberGenerator.new()
+	ctx.overhead = Node2D.new()
+	ctx.ground = Node2D.new()
+	var h: Structure = _houses(env)[0]
+	var fx := FxTimeline.cast(TheSwallowingDarkFx, ctx, h.center()) as TheSwallowingDarkFx
+	t.check(fx.radius() == 0.0 and is_equal_approx(fx.full_r, 10.0), "no crowd: the light size")
+	_go(fx, 23.0)
+	t.check(fx.finished and not env.structures().has(h), "no crowd: it takes the house and finishes")
+	ctx.overhead.free()
+	ctx.ground.free()
+
+
+## Task 10b (C19): the market square, light (r 10), the densest fold in town. Every building wholly inside and not spared goes, the
+## rest stand in their order, and the fold ends within 1 s of full size even at 30 fps (30 frames); the field's index after it is
+## the one a full rebuild gives (the batch remove left nothing stale).
+static func _market(t) -> void:
+	var made := _setup()
+	var crowd: Crowd = made[0]
+	var env: EnvironmentField = made[1]
+	var ctx: FxContext = made[5]
+	var town: Town = made[6]
+	var at := Places.at(&"market_square")
+	var keep: Array = []
+	keep.append_array(town.gates)
+	keep.append_array(town.bridges)
+	keep.append_array([town.bridge, town.postern, town.dock, town.fountain])
+	var expect: Array[Structure] = []
+	var stay: Array[Structure] = []
+	for s in env.structures():
+		if not s.taken and not keep.has(s) and TheSwallowingDarkFx.wholly_inside(s, at, 10.0) and not MissionKeeps.spared(s, crowd, null):
+			expect.append(s)
+		else:
+			stay.append(s)
+	t.check(expect.size() >= 50, "the market square has a dense block to take (%d buildings)" % expect.size())
+	var fx := _cast(ctx, at)
+	while not fx.swallowed and not fx.finished:
+		fx._process(DT)
+	var frames := 0
+	var worst := 0
+	while fx.left() > 0 and frames < 600:
+		var t0 := Time.get_ticks_usec()
+		fx._process(DT)
+		worst = maxi(worst, Time.get_ticks_usec() - t0)
+		frames += 1
+	print("veil_swallow market: %d buildings, %d removals, %d frames, worst step %.1f ms" % [expect.size(), fx.removed, frames,
+		worst / 1000.0])
+	# Within 1 s even when the fold's own frames run at 30 fps (a game frame is the town's ~16 ms plus the fold's step): 30 frames at most.
+	t.check(fx.left() == 0 and frames <= 30, "market square: the fold ends within 1 s of full size at 30 fps (%d frames)" % frames)
+	var all_taken := true
+	for s in expect:
+		all_taken = all_taken and s.taken
+	t.check(all_taken and env.structures() == stay, "market square: every building wholly inside is taken, the rest stand in order")
+	var cells := func() -> Array:
+		var out := []
+		for g: Dictionary in [env._grid, env._fine]:
+			var keys := []
+			for k in g:
+				if not (g[k] as Array).is_empty():
+					keys.append(k)
+			keys.sort()
+			for k in keys:
+				out.append([k, (g[k] as Array).map(func(s: Structure) -> int: return s.get_instance_id())])
+		return out
+	var now: Array = cells.call()
+	env.reindex()
+	t.check(now == cells.call(), "market square: after the fold the field's index is a full rebuild's")
+	_go(fx, 2.0)
+	t.check(fx.finished, "market square: the effect ends")
+	_done(made)
+
+
+## True when `n` is freed or on its way out (it, or a parent, queued for deletion).
+static func _gone(n: Variant) -> bool:
+	if n == null or not is_instance_valid(n):
+		return true
+	var at: Node = n
+	while at != null:
+		if at.is_queued_for_deletion():
+			return true
+		at = at.get_parent()
+	return false
+
+
+## Review round (VRD, spec 6): the look. The hole on the ground plane (over the town's lamp pools), the tendrils standing in the world,
+## the dust drawn in over the town while it grows; over the heave a rim of dark stands up at the edge and closes in, the circle going
+## black behind it (over the town), all under by full size; when the fold is done the bare earth lies there (its bowl). Every piece
+## goes when the cast runs out, with end_now() and with a freed cast; a bare context (an overhead layer only) builds and finishes.
+static func _look(t) -> void:
+	for mode in ["run", "end_now", "free"]:
+		var ctx := FxContext.new()
+		ctx.rng = RandomNumberGenerator.new()
+		ctx.overhead = Node2D.new()
+		ctx.overhead_back = Node2D.new()
+		ctx.ground = Node2D.new()
+		ctx.world = Node2D.new()
+		var fx := FxTimeline.cast(TheSwallowingDarkFx, ctx, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+		_go(fx, 2.0)
+		var hole := fx._hole
+		t.check(hole != null and hole.get_parent() == ctx.ground and hole.z_index == 7
+			and (hole.material as ShaderMaterial).shader == TheSwallowingDarkFx.SH_HOLE, "%s: the hole on the ground plane, over the lamp pools" % mode)
+		var standing := fx._tendrils.filter(func(n: Node) -> bool: return is_instance_valid(n) and n.get_parent() == ctx.world)
+		t.check(standing.size() == TheSwallowingDarkFx.TENDRILS, "%s: its tendrils stand in the world (%d)" % [mode, standing.size()])
+		t.check(fx._dust != null and fx._dust.get_parent() == ctx.overhead_back and fx._dust._particles.size() > 0,
+			"%s: dust drawn in over the rim (%d motes)" % [mode, fx._dust._particles.size() if fx._dust != null else -1])
+		t.check(fx._under != null and fx._under.get_parent() == ctx.overhead_back and not fx._under.visible and fx._rim != null
+			and fx._rim.get_parent() == ctx.overhead_back and fx._rim.amount == 0.0, "%s: nothing goes under while it grows" % mode)
+		_go(fx, fx.t_full - TheSwallowingDarkFx.HEAVE * 0.5 - fx.t)
+		t.check(fx._under.visible and fx._rim.amount > 0.0 and fx._rim.front > 0.5 and fx._rim.front < fx.radius() - 0.5
+			and not fx.swallowed, "%s: over the heave the rim closes in, the circle going black behind it (rim at %.1f of %.1f)"
+			% [mode, fx._rim.front, fx.radius()])
+		_go(fx, fx.t_full - fx.t + 0.02)
+		t.check(fx.swallowed and fx._under.visible and fx._rim.front <= 0.01, "%s: at full size the whole circle is under" % mode)
+		var pieces: Array = [hole, fx._under, fx._rim, fx._dust, fx._chunks]
+		pieces.append_array(fx._tendrils)
+		match mode:
+			"run":
+				_go(fx, 2.0)
+				var earth: Array = ctx.ground.get_children().filter(func(c: Node) -> bool: return c is TheSwallowingDarkFx.BareEarth)
+				t.check(fx.finished and earth.size() == 1 and (earth[0] as Node2D).material is ShaderMaterial,
+					"run: the fold done, the bare earth (a bowl) is left on the ground plane")
+			"end_now":
+				fx.end_now()
+			"free":
+				fx.free()
+		var left := pieces.filter(func(n: Variant) -> bool: return not _gone(n))
+		t.check(left.is_empty(), "%s: every piece of the look is gone (%d left)" % [mode, left.size()])
+		for n: Node in [ctx.overhead, ctx.overhead_back, ctx.ground, ctx.world]:
+			n.free()
+	var bare := FxContext.new()
+	bare.rng = RandomNumberGenerator.new()
+	bare.overhead = Node2D.new()
+	var lone := FxTimeline.cast(TheSwallowingDarkFx, bare, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+	t.check(lone._hole == null and lone._tendrils.is_empty() and lone._dust == null, "a bare context: no ground, world or back layer, none of theirs")
+	_go(lone, 23.0)
+	t.check(lone.finished, "a bare context builds the look it can and finishes without an error")
+	bare.overhead.free()
+
+
+## Review pass 2 (spec 4): a stand-in for the stage's Sfx, in the tree (so the effect fades its voices through it): each cue asked
+## for, with the cast's clock then, a voice per cue (marked with its cue, as Sfx's pool does) and the voices faded out.
+class SfxSpy extends Node:
+	var fx: FxTimeline
+	var asked: Array = []  # [cue, the cast's clock]
+	var voices := {}  # cue -> its last voice
+	var faded: Array[Node] = []
+
+	func play(cue: StringName, _ground_pos: Vector2, db_offset := 0.0) -> Node:
+		asked.append([cue, fx.t if is_instance_valid(fx) else 0.0])
+		var v := AudioStreamPlayer2D.new()
+		v.set_meta(&"cue", cue)
+		v.volume_db = float(Sfx.CATALOG[cue].get("db", 0.0)) + db_offset
+		add_child(v)
+		voices[cue] = v
+		return v
+
+	func fade_out(player: Node, _seconds: float) -> void:
+		faded.append(player)
+
+	## The cast's clock at each time `cue` was asked for.
+	func when(cue: StringName) -> Array:
+		return asked.filter(func(a: Array) -> bool: return a[0] == cue).map(func(a: Array) -> float: return a[1])
+
+	func faded_cue(cue: StringName) -> bool:
+		return voices.has(cue) and faded.has(voices[cue])
+
+
+## Steps the effect in frames of DT up to the last frame before its clock reaches `when`.
+static func _until(fx: FxTimeline, when: float) -> void:
+	while fx.t + DT < when and not fx.finished:
+		fx._process(DT)
+
+
+static func _spy() -> SfxSpy:
+	var spy := SfxSpy.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(spy)
+	return spy
+
+
+## Review pass 2 (spec 4): the sound. The cast opens (v_swallow) and the rumble starts with it (v_swallow_loop), quiet at first and
+## swelling with the circle; the heave's rush is asked for HEAVE before the fold (the look's own times), the fold's hit at full size,
+## and the rumble is let go at the fold. With end_now() over the heave the rumble and the rush both go; a cast freed mid-growth lets
+## its rumble go too. A bare context (no sfx) builds, grows and finishes without an error (the look's own check above).
+static func _sound(t) -> void:
+	for mode in ["run", "end_now", "free"]:
+		var spy := _spy()
+		var ctx := FxContext.new()
+		ctx.rng = RandomNumberGenerator.new()
+		ctx.overhead = Node2D.new()
+		ctx.sfx = spy
+		var fx := FxTimeline.cast(TheSwallowingDarkFx, ctx, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+		spy.fx = fx
+		var loop: Node = spy.voices.get(&"v_swallow_loop")
+		var base := float(Sfx.CATALOG[&"v_swallow_loop"].get("db", 0.0))
+		t.check(spy.when(&"v_swallow") == [0.0] and spy.when(&"v_swallow_loop") == [0.0] and loop != null
+			and absf((loop as AudioStreamPlayer2D).volume_db - (base + TheSwallowingDarkFx.RUMBLE_FROM_DB)) < 0.01,
+			"%s: the cast opens and the rumble starts with it, %.0f dB under its level" % [mode, -TheSwallowingDarkFx.RUMBLE_FROM_DB])
+		_go(fx, 5.0)
+		var at_5 := (loop as AudioStreamPlayer2D).volume_db
+		_go(fx, 5.0)
+		var at_10 := (loop as AudioStreamPlayer2D).volume_db
+		t.check(at_10 > at_5 and at_5 > base + TheSwallowingDarkFx.RUMBLE_FROM_DB and not spy.faded.has(loop)
+			and spy.when(&"v_swallow_heave").is_empty(),
+			"%s: while it grows the rumble plays on and swells (%.1f at 5 s, %.1f at 10 s); no rush yet" % [mode, at_5, at_10])
+		if mode == "free":
+			fx.free()
+			t.check(spy.faded.has(loop), "free: a cast freed while it grows lets its rumble go")
+		else:
+			_until(fx, fx.t_full - TheSwallowingDarkFx.HEAVE)
+			t.check(spy.when(&"v_swallow_heave").is_empty(), "%s: no rush before the heave (%.3f s)" % [mode, fx.t])
+			_go(fx, 2.0 * DT)
+			var heave := spy.when(&"v_swallow_heave")
+			t.check(heave.size() == 1 and absf(heave[0] - (fx.t_full - TheSwallowingDarkFx.HEAVE)) <= DT + 0.001 and fx.rush_from == 0.0,
+				"%s: the rush is asked for at the heave, %.2f s before the fold (%s)" % [mode, TheSwallowingDarkFx.HEAVE, heave])
+			var rush: Node = spy.voices.get(&"v_swallow_heave")
+			if mode == "end_now":
+				_go(fx, 0.5)
+				fx.end_now()
+				t.check(spy.faded.has(loop) and spy.faded.has(rush) and spy.when(&"v_swallow_take").is_empty(),
+					"end_now: ended over the heave, the rumble and the rush both go, and no fold sounds")
+			else:
+				_until(fx, fx.t_full)
+				t.check(absf((loop as AudioStreamPlayer2D).volume_db - base) < 0.2 and not spy.faded.has(loop) and not fx.swallowed,
+					"run: just before the fold the rumble is at full (%.2f of %.2f)" % [(loop as AudioStreamPlayer2D).volume_db, base])
+				_go(fx, 2.0 * DT)
+				var take := spy.when(&"v_swallow_take")
+				t.check(take.size() == 1 and absf(take[0] - fx.t_full) <= DT + 0.001 and spy.faded.has(loop) and not spy.faded.has(rush),
+					"run: the fold hits at full size (%s), the rumble is let go, the rush runs on into the hit" % [take])
+				_go(fx, 2.0)
+				t.check(fx.finished and spy.faded.count(loop) == 1, "run: the cast ends, the rumble let go once")
+		var asked := spy.asked.size()
+		ctx.overhead.free()
+		t.check(spy.asked.size() == asked, "%s: nothing more is asked for after the cast is gone" % mode)
+		spy.free()
+	# A bare context (no sfx at all): the cast plays nothing, grows, folds and finishes without an error.
+	var bare := FxContext.new()
+	bare.rng = RandomNumberGenerator.new()
+	bare.overhead = Node2D.new()
+	var lone := FxTimeline.cast(TheSwallowingDarkFx, bare, Vector2(-200.0, -200.0)) as TheSwallowingDarkFx
+	t.check(lone._rumble == null, "a bare context: no rumble voice")
+	_go(lone, 23.0)
+	t.check(lone.finished and lone._rumble == null and lone._rush == null, "a bare context: it grows, folds and finishes with no sound and no error")
+	bare.overhead.free()

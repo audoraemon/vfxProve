@@ -173,6 +173,11 @@ const COL_WHISPER := Color("f0d070")
 const SHAKE_OFF := 20.0
 ## Pestilence (v0.06): the sick move at this share of their pace; SICK_MOTE is the green the targeting preview rings them in.
 const SICK_PACE := 0.7
+## Blight's quarry illness (make_ill()): the pace it keeps, under its own key in pace_holds (instance ids are positive; this is not one).
+const ILL_PACE := 0.5
+const ILL_HOLD := -1
+## How near the home point a sick person must come to be taken indoors (send_home_sick()).
+const SICK_HOME_REACH := 0.9
 const SICK_MOTE := Color("a8d060")
 ## Pestilence (v0.07.1): the sick go through these colours as death nears, one for each of SICK_STAGES steps: bright
 ## green when caught, then yellow-green, amber, orange and red. Saturated, so they stay readable under the evening light.
@@ -451,6 +456,12 @@ var health := HEALTH_CITIZEN
 ## Named statuses a power lays on a person (a Disorder power's madness, 0..1), by name. The manager that lays one
 ## reads and steps it; the person only carries it, and responds to what the manager asks of it.
 var statuses := {}
+## Blind (Veil, Person.blind_for()): seconds left; the status &"blind" stands while it runs. Turned away (turn_away()): seconds he takes
+## up no new fight target.
+var _blind_left := 0.0
+var _turn_left := 0.0
+## The crowd clock of the last step a dread refused him (_step_blocked()); -INF for none (Veil: Dread of the Dark's twist reads it).
+var dread_balked_at := -INF
 ## Powers' holds on its pace, by the power's instance id -> the share kept (hold_pace()).
 var pace_holds := {}
 ## Decree's law on it (LawMark), while one holds it; null for none. Only LawMark sets it: ask LawMark, never this.
@@ -480,6 +491,13 @@ var _held_string := false
 var _stumble := 0.0
 ## Seconds of sleep left (Mind.ASLEEP; sleep()).
 var _sleep_left := 0.0
+## The sleep now is deep (sleep(.., true): Slumber in the dark, Dreamless): no noise wakes it, only a hurt.
+var _deep_sleep := false
+## Blight on a person (Veil): ill and sent home (send_home_sick()); he walks to `_sick_home` and is taken indoors there for the mission.
+var home_sick := false
+var _sick_home := Vector2.INF
+## Seconds of Blight's quarry illness left (make_ill()): half pace under its own pace hold (ILL_HOLD).
+var _ill_left := 0.0
 ## Seconds left screaming (scream()), and how long the scream is in all: it holds the person still.
 var _scream_left := 0.0
 var _scream_total := SCREAM_SECONDS
@@ -517,6 +535,13 @@ var _look := -1.0
 var _design_key := -1
 var _design_name := ""
 var _design_info: Array
+
+
+## The design's PeopleArt.info() table (block, silhouette block, foot, cell, frames, flags), empty before the first draw. Shadow Play
+## reads the silhouette frame from it for its edge.
+func silhouette_src() -> Array:
+	return _design_info
+
 
 var _path := PackedVector2Array()
 var _leg := 0
@@ -631,6 +656,8 @@ func _process(delta: float) -> void:
 ## One frame of this person: the camera check, the off-screen throttle, the tick, then the light and the redraw
 ## check. A crowd's people are stepped by its ticker instead of processing one by one (see ticked).
 func frame(delta: float) -> void:
+	if home_sick and inside:
+		return  # sick in bed for the rest of the mission (send_home_sick()): a soldier is stepped indoors too, so he is held here
 	# Looked up once a frame: the base unit and the brain both ask.
 	_seen = not view.has_area() or view.has_point(position)
 	var every := 1
@@ -689,8 +716,17 @@ func tick(delta: float) -> void:
 			_think(_think_accum)
 			_think_accum = 0.0
 		_think_due = not _think_due
+	if _ill_left > 0.0:
+		_ill_left -= delta
+		if _ill_left <= 0.0:
+			_ill_left = 0.0
+			free_pace(ILL_HOLD)
+	if _blind_left > 0.0 or _turn_left > 0.0:
+		_run_blind(delta)
 	if (mind == Mind.ASLEEP or _scream_left > 0.0 or _down_left > 0.0 or _getup_left > 0.0) and state == State.WANDER:
 		_idle = maxf(_idle, delta + 0.01)  # held (asleep, screaming, down): a goal set from outside cannot creep it for a tick, whatever the tick
+	elif state == State.WANDER and not statuses.is_empty() and is_dreaded() and not is_shadow():
+		_idle = maxf(_idle, delta + 0.01)  # Dread of the Dark: frozen where he stands while the dread is on him (a sleeper sleeps instead)
 	var before := ground_pos
 	super(delta)
 	_track_stride(ground_pos - before, delta)
@@ -772,6 +808,9 @@ func _think(delta: float) -> void:
 	if _getup_left > 0.0:
 		_getup_left = maxf(_getup_left - delta, 0.0)
 		_idle = maxf(_idle, 0.2)
+		return
+	if home_sick:
+		_walk_home_sick()
 		return
 	# A path can run out short of the goal: the goal sits inside a building, the way changed under us (a
 	# bridge fell), or an effect threw us off it. Whatever the mind, drop the goal so it can plan a new one.
@@ -1384,9 +1423,13 @@ func _footprints_clear(a: Vector2, b: Vector2, margin: float) -> bool:
 ## (Divine Schism, the law mark): a shelter escort never steadies it away.
 func panic(from: Vector2, radius := 1.0, kind := &"", startle := true, may_shelter := true, forced := false) -> void:
 	if mind == Mind.ASLEEP and state != State.DEAD:
+		if _deep_sleep:
+			return  # a deep sleep (Veil) sleeps through any noise; only a hurt wakes it
 		wake()  # a danger close enough to frighten is loud enough to wake
 	if resists_mind() or mind == Mind.FLEE or mind == Mind.SHELTER or inside or state == State.DEAD or mind == Mind.FIGHT:
 		return
+	if home_sick or (not statuses.is_empty() and (is_shadow() or is_dreaded())):
+		return  # the sick walk home whatever happens; a shadow sees nothing; the dreaded cannot run (Veil)
 	if held_by_will(WILL_ABSOLUTE):
 		return  # a Dominion stronger than fear
 	if fearless_left > 0.0 and not burning():
@@ -1535,6 +1578,8 @@ func _flinch_think(delta: float) -> bool:
 func observe(from: Vector2, seconds := -1.0) -> void:
 	if night_indoors or resists_mind() or state == State.DEAD:
 		return
+	if home_sick or (not statuses.is_empty() and (is_shadow() or is_dreaded())):
+		return  # (Veil) the sick, a shadow and the dreaded look at nothing
 	if fearless_left > 0.0:
 		flinch(from)  # told there is nothing to fear, he still turns to look (fair life, 2026-11-20)
 		return
@@ -2211,16 +2256,20 @@ func magnify(k: float) -> bool:
 		any = true
 	if badge_left > 0.0:
 		badge_left *= k
+	if _blind_left > 0.0:
+		_blind_left *= k
 	return any
 
 
 ## Fall asleep where it stands for `seconds` (Curfew): Mind.ASLEEP, down on the ground, thinking nothing. Whatever it
 ## was doing is dropped -- a queue, a fight, a flight -- and the day is picked up again on waking. Woken early by a
 ## loud blow nearby (Crowd._react()), by a hurt, or by anything that takes the mind (a compulsion). Anyone inside and
-## the dead do not sleep. True when it took.
-func sleep(seconds: float) -> bool:
+## the dead do not sleep. True when it took. `deep` (Veil: Slumber in the dark, Dreamless): no noise wakes it -- not a blow, not a
+## danger (panic()) -- only a hurt; a light sleep laid on a deep one keeps it deep.
+func sleep(seconds: float, deep := false) -> bool:
 	if inside or state == State.DEAD or seconds <= 0.0:
 		return false
+	_deep_sleep = deep or (mind == Mind.ASLEEP and _deep_sleep)
 	_hold_begin()
 	release_from_queue()
 	passing_gate = null
@@ -2241,6 +2290,7 @@ func wake() -> void:
 	if mind != Mind.ASLEEP:
 		return
 	_sleep_left = 0.0
+	_deep_sleep = false
 	if soldier:
 		send_to_post(post if post != Vector2.INF else ground_pos)
 	else:
@@ -2249,6 +2299,191 @@ func wake() -> void:
 
 func is_asleep() -> bool:
 	return mind == Mind.ASLEEP
+
+
+## Asleep in a deep sleep (sleep(.., true)): noise does not wake it; a hurt still does.
+func is_deep_asleep() -> bool:
+	return mind == Mind.ASLEEP and _deep_sleep
+
+
+## The watch's one question (Veil, Cloak of Night): is this person hidden from the watch -- passing as the walking dead (guised(),
+## Corpse Guise) or cloaked (statuses[&"cloak"], laid and lifted by Cloak of Night). What the watch reads: the witness check, a
+## soldier's choice of whom to fight, the Faithful's sight, the escort's watch and searchers, the inquisitors. Death's own readers (his
+## undead sparing the guised, the grey draw) stay on guised(): the cloaked walk normally and the dead do not spare them.
+func hidden_from_watch() -> bool:
+	return statuses.has(&"guise") or statuses.has(&"cloak")
+
+
+## Shadow Play (Veil): this person is their own shadow now (statuses[&"shadow"], laid and lifted by the effect). The shadow goes on with
+## the task, but sees nothing and does nothing: it is no witness, reports nothing, never cries out, is not frightened, does not flee,
+## takes no fight, seizes no one and rings no bell; and it is not afraid of the dark (a dread neither stops nor freezes it).
+func is_shadow() -> bool:
+	return statuses.has(&"shadow")
+
+
+## Dread of the Dark (Veil): the dread is on this person (statuses[&"dread"], laid and lifted by the effect): frozen where he stands,
+## silent -- he cannot walk, flee, shout, ring, fight or seize, and he is no witness. A sleeper sleeps (asleep beats frozen).
+func is_dreaded() -> bool:
+	return statuses.has(&"dread")
+
+
+## The one read for what a person does for the town (Veil ruling C13): a shadow or a dreaded person sees, seizes, finds, reports and
+## delivers nothing (is_shadow(), is_dreaded()). Behind the cheap empty test: nothing changes without a Veil status.
+func veil_blind() -> bool:
+	return not statuses.is_empty() and (statuses.has(&"shadow") or statuses.has(&"dread") or statuses.has(&"blind"))
+
+
+## Blind (Veil, the twists): for `seconds` he sees, seizes, finds, reports and delivers nothing (veil_blind()) -- but he still walks, flees,
+## fights and cries out. The longest wins; nothing for the dead. The status is erased when it runs out (tick()).
+func blind_for(seconds: float) -> void:
+	if state == State.DEAD or seconds <= 0.0:
+		return
+	_blind_left = maxf(_blind_left, seconds)
+	statuses[&"blind"] = true
+
+
+func is_blind() -> bool:
+	return statuses.has(&"blind")
+
+
+## Cloak of Night's turned watch (Veil, VL10): drops a pursuit and takes up no new fight target for `seconds`, and is blind for the same
+## time. A soldier is back at his post; anyone else calm, with no goal. False for the dead and the indoors.
+func turn_away(seconds: float) -> bool:
+	if inside or state == State.DEAD or seconds <= 0.0:
+		return false
+	_turn_left = maxf(_turn_left, seconds)
+	blind_for(seconds)
+	if mind == Mind.ASLEEP:
+		return true  # a sleeper is not woken: he is blind, and turned
+	release_from_queue()
+	passing_gate = null
+	fight_target = null
+	_fight_left = 0.0
+	_ordered = false
+	if soldier:
+		send_to_post(post if post != Vector2.INF else ground_pos)
+	elif mind != Mind.FLEE and mind != Mind.PANIC and mind != Mind.SHELTER:
+		mind = Mind.CALM
+		_goal = Vector2.INF
+		_path = PackedVector2Array()
+	return true
+
+
+## tick(): the blind and the turned run down; the status goes at 0.
+func _run_blind(delta: float) -> void:
+	if _turn_left > 0.0:
+		_turn_left = maxf(_turn_left - delta, 0.0)
+	if _blind_left > 0.0:
+		_blind_left -= delta
+		if _blind_left <= 0.0:
+			_blind_left = 0.0
+			statuses.erase(&"blind")
+
+
+## Blight on a person (Veil): ill without a sound, he walks home -- his house's point (profile.home), a soldier to the barracks yard,
+## one with neither to the nearest house -- and is taken indoors there for the rest of the mission, as a NIGHT mission keeps its
+## citizens (NightRules.apply(): inside, night_indoors, hidden, out of the field). Not a death: he is alive and counted among the living.
+## Whatever he was doing is dropped first: a queue, a fight, a fright, a fire, a duty (can_take_duty() is false from now on, so no duty
+## takes him again; a carter's load is the Harvest's to drop, HarvestDirector._dropped_look()). Nothing frightens him on the way.
+## Nothing for the dead, the indoors or one already sent.
+func send_home_sick() -> void:
+	if home_sick or inside or state == State.DEAD:
+		return
+	home_sick = true
+	_sick_home = _home_point()
+	release_from_queue()
+	passing_gate = null
+	fight_target = null
+	_fight_left = 0.0
+	_ordered = false
+	_panic_left = 0.0
+	_startle_left = 0.0
+	_stumble = 0.0
+	wait = 0.0
+	_held_saved = false
+	_lured = false
+	_duty_lured = false
+	hurrying = false
+	engineer_duty = false
+	assist_fire = null
+	assist_patch = null
+	assist_beating = false
+	assist_full = false
+	assist_at_water = false
+	assist_stays = false
+	shelter = null
+	if mind == Mind.ASLEEP:
+		_sleep_left = 0.0
+		_deep_sleep = false
+	mind = Mind.POST if soldier else Mind.CALM
+	anchor = _sick_home if _sick_home != Vector2.INF else ground_pos
+	walk_speed = _mind_speed()
+	_goal = Vector2.INF
+	_path = PackedVector2Array()
+	_leg = 0
+	_repath_in = 0.0
+	_walk_home_sick()
+
+
+## Where the sick walk to (send_home_sick()): the home point, snapped to walkable ground; a soldier's barracks yard; else the nearest
+## house's door; else where he stands.
+func _home_point() -> Vector2:
+	var home := Vector2.INF
+	if soldier:
+		home = City.current().landmark(&"barracks_yard").get_center()
+	elif profile != null and profile.home != Vector2.INF:
+		home = profile.home
+	elif env != null:
+		var best := INF
+		for s in env.structures():
+			if is_instance_valid(s) and not s.destroyed and s.role == &"house":
+				var d := s.distance_to(ground_pos)
+				if d < best:
+					best = d
+					home = s.center()
+	if home != Vector2.INF and grid != null:
+		var w := grid.nearest_walkable(home, 8)
+		home = w if w != Vector2.INF else home
+	return home if home != Vector2.INF else ground_pos
+
+
+## One look of the sick walk (_think()): there, he is taken indoors; else he walks on, whatever took his mind on the way.
+func _walk_home_sick() -> void:
+	mind = Mind.POST if soldier else Mind.CALM
+	hurrying = false
+	walk_speed = _mind_speed()
+	if ground_pos.distance_to(_sick_home) <= SICK_HOME_REACH:
+		_goal = Vector2.INF
+		_path = PackedVector2Array()
+		inside = true
+		night_indoors = true
+		visible = false
+		if field != null:
+			field.remove(self)
+		return
+	if (_goal != Vector2.INF and _goal.distance_to(_sick_home) > 0.01) or (_goal == Vector2.INF and _repath_in <= 0.0):
+		# Sent somewhere else (a post, a routine): home again at once. Lost his way (the path ran out): once a REPATH.
+		set_goal(_sick_home)
+		if _path.is_empty():
+			_target = _sick_home  # no way there on the grid (a step away): walk straight
+			_idle = 0.0
+	elif _path.is_empty() and ground_pos.distance_to(_target) < 0.05:
+		_target = _sick_home
+		_idle = 0.0
+
+
+## Blight on a mission's quarry (Veil): ill for `seconds` -- half pace (ILL_PACE, under its own pace hold), nothing dropped, nothing
+## else changed -- then well again. A second illness gives the longer of the two.
+func make_ill(seconds: float) -> void:
+	if state == State.DEAD or seconds <= 0.0:
+		return
+	_ill_left = maxf(_ill_left, seconds)
+	hold_pace(ILL_HOLD, ILL_PACE)
+
+
+## Seconds of the quarry illness left (0 when well).
+func ill_left() -> float:
+	return _ill_left
 
 
 ## Seconds of sleep left (0 when awake).
@@ -2302,6 +2537,8 @@ func stun(seconds: float) -> void:
 func fight(target: Person, seconds: float, blow: float, rule := FightRule.ANYONE, sight := FIGHT_SIGHT, kind := &"") -> void:
 	if inside or state == State.DEAD:
 		return
+	if home_sick or (not statuses.is_empty() and (is_shadow() or is_dreaded())):
+		return  # (Veil) the sick, a shadow and the dreaded fight nobody
 	release_from_queue()
 	passing_gate = null
 	_held_saved = false  # a fight takes him over: nothing of an earlier hold is left to go back to
@@ -2426,8 +2663,10 @@ func _fightable(p: Person) -> bool:
 		return false  # nobody is beaten on the ground; a mob set on one person (a verdict) still finishes it
 	if p.law != null and LawMark.spares(self, p, _fight_rule):
 		return false  # the law hides him (a NOBODY, or an OFFICER from a guard)
-	if soldier and (_fight_rule == FightRule.HOSTILES or _fight_rule == FightRule.OWN_KIND) and p.guised():
-		return false  # Corpse Guise: the watch's own choice looks straight past the walking dead (a frenzy or a power's order does not)
+	if _turn_left > 0.0 and (_fight_rule == FightRule.HOSTILES or _fight_rule == FightRule.OWN_KIND):
+		return false  # turned away (turn_away()): he takes up no new target for now
+	if soldier and (_fight_rule == FightRule.HOSTILES or _fight_rule == FightRule.OWN_KIND) and p.hidden_from_watch():
+		return false  # Corpse Guise or Cloak of Night: the watch's own choice looks straight past them (a frenzy or a power's order does not)
 	match _fight_rule:
 		FightRule.HOSTILES:
 			# A fighting citizen, or a fighter set on another side (a soldier turned).
@@ -2446,6 +2685,9 @@ func _fightable(p: Person) -> bool:
 ## One frame of fighting: look again for someone every FIGHT_RETARGET, go to them, strike within FIGHT_REACH every
 ## FIGHT_SWING.
 func _fight_step(delta: float) -> void:
+	if not statuses.is_empty() and (is_shadow() or is_dreaded()):
+		stop_fighting()  # (Veil) a fight he was in ends when he becomes a shadow or the dread falls on him
+		return
 	_retarget_in -= delta
 	_swing_in -= delta
 	if not _fightable(fight_target):
@@ -2927,7 +3169,7 @@ func go_duty(at: Vector2) -> void:
 ## Whether go_duty() would take now: not dead, fleeing or fighting, nor held by a firm compulsion (god T1R H8: a mission picks its
 ## errand-runners from those who can).
 func can_take_duty() -> bool:
-	return not (state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or burning())  # a man on fire takes no duty (fair life, 2026-11-20)
+	return not (state == State.DEAD or mind == Mind.FLEE or mind == Mind.FIGHT or held_by_will(WILL_FIRM) or home_sick or burning())  # a man on fire takes no duty (fair life, 2026-11-20)
 
 
 ## A panicked dash: away from the danger, veering, to the nearest walkable point.
@@ -2974,6 +3216,8 @@ func is_stumbling() -> bool:
 func flee() -> void:
 	if night_indoors or soldier or mind == Mind.FLEE or state == State.DEAD or mind == Mind.FIGHT or held_by_will(WILL_FIRM):
 		return
+	if home_sick or (not statuses.is_empty() and (is_shadow() or is_dreaded())):
+		return  # (Veil) the sick walk home; a shadow keeps the queue; the dreaded cannot walk
 	if fearless_left > 0.0:
 		_reassured_fled = true  # it will go when the calm wears off
 		return
@@ -3043,6 +3287,12 @@ static func _sync_rivers() -> void:
 func _step_blocked(step: Vector2) -> bool:
 	if super(step):
 		return true
+	# Dread of the Dark (Veil): nobody steps from outside into dreaded ground -- he waits at its edge until the dread ends. A shadow is
+	# not afraid of the dark; one already inside is held by the dread on him (is_dreaded()), not by the edge.
+	if crowd != null and not crowd.dreads.is_empty() and not is_shadow() and crowd.dreaded(ground_pos + step) \
+			and not crowd.dreaded(ground_pos):
+		dread_balked_at = crowd.clock()
+		return true
 	if grid == null:
 		return false
 	if not _river_rules():
@@ -3076,8 +3326,8 @@ func at_own_post() -> bool:
 ## away on a guard job, and either on duty or at his station (a director-stationed soldier counts; a guard away on a fire or a
 ## pile never does).
 func on_watch() -> bool:
-	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job or on_beat():
-		return false
+	if not soldier or state == State.DEAD or inside or held_by_god() or on_guard_job or on_beat() or veil_blind():
+		return false  # (Veil C13: a shadow or a dreaded man keeps no watch -- he sees nothing; at_own_post() still counts his post held)
 	if _gate_guard():
 		return mind == Mind.POST or mind == Mind.HOLD  # a gate guard keeps his watch wherever his check has taken him
 	return mind == Mind.DUTY or ((mind == Mind.POST or mind == Mind.HOLD) and ground_pos.distance_to(anchor) <= WATCH_REACH)

@@ -12,8 +12,10 @@ extends RefCounted
 
 ## The kinds of death nobody should hear cry out (Silent Doom, the Death Mark, the plague, Pale Reign, the Pale Serpent's shadow;
 ## and choking, Breathing Is Prohibited: there is no air to cry with; and the Sealed Verdict's dead, who fall where they stand
-## without a sound; Borrowed Life's, which leaves no body).
-const QUIET_KINDS := [&"doom", &"deathmark", &"plague", &"pale", &"shadow", &"choke", &"verdict", &"grave", &"borrowed"]
+## without a sound; Borrowed Life's, which leaves no body; and the Veil's: Dreamless's found body, and the silent takes, which
+## Crowd._on_killed() lets pass before any voice -- named here so no voice is ever made for them).
+const QUIET_KINDS := [&"doom", &"deathmark", &"plague", &"pale", &"shadow", &"choke", &"verdict", &"grave", &"borrowed", &"dreamless",
+	&"void", &"night", &"dreamt", &"shade", &"edge"]
 ## Deaths this close after a wave's first belong to it, seconds.
 const WAVE_WINDOW := 0.25
 ## How many bodies of one wave are voiced.

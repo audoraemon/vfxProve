@@ -266,6 +266,8 @@ var crouching := false
 var talk_left := 0.0
 ## A sweep man sees a power or a death from Crowd.WATCH_SIGHT, not DOOM_WITNESS. Set and cleared only by SweepDuty and GateCheck.
 var watch_far := false
+## Held at (or out of) a watchman's post by the board Warning's StarfallDirector (it alone sets it): a wall loop does not walk him on.
+var post_held := false
 ## A soldier the god's hand has taken (v0.11.1; _hold_begin()): what he was doing (mind, anchor, hurrying), so that when the
 ## hold lifts he goes back to exactly that -- a Knight to his post, a ring slot to the ring, a man on a director's duty to
 ## the duty -- and not to his spawn post (_soldier_back()).

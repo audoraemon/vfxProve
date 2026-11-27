@@ -19,6 +19,7 @@ static func run(t) -> void:
 	_g4(t)
 	_release(t)
 	_teardown_loss(t)
+	_loop_men(t)
 	_wish_keepout(t)
 	_off_the_board(t)
 	Person.frame_no = -1
@@ -222,9 +223,21 @@ static func _release(t) -> void:
 		off_town = off_town and not p.post.is_equal_approx(p.town_post) and p.town_post != Vector2.INF or p.town_post == Vector2.INF
 	t.check(all_held, "every moved soldier is held by the director (busy, held_by_mission)")
 	t.check(off_town, "a moved soldier's `post` is his new spot, never his `town_post`")
+	var first_men: Array = []
+	for p: Variant in held_for.keys():
+		if int(held_for[p]) == 0:
+			(d._men[p] as Dictionary)["far"] = true  # a far-seeing checker's sight, stored as the hold took it
+			first_men.append(p)
 	for k in roundi((float(StarfallDirector.STARS[0][0]) + 0.5) / DT):
 		_step(s)
 		_note(d, all_men, k)
+	var sight_back := true
+	var freed := 0
+	for p: Variant in first_men:
+		if is_instance_valid(p) and (p as Person).is_alive() and not d._men.has(p):
+			freed += 1
+			sight_back = sight_back and (p as Person).watch_far and not (p as Person).post_held
+	t.check(freed > 0 and sight_back, "a post freed mid-night gives its men their sight back and the loop's hand (%d freed)" % freed)
 	t.check(not d.stars[0].at_post() and not d.posts_held().has(0) and d.posts_held().has(1) and d.posts_held().has(2),
 		"after the first set-off post 0 is let go and the other two stay held (%s)" % [d.posts_held()])
 	var later := d._men.size()
@@ -294,6 +307,10 @@ static func _teardown_loss(t) -> void:
 	for w in d.stars:
 		stays += 1 if w.watchman.stay_left >= NightRules.HOLD_STAY else 0
 	t.check(stays == 3, "each watchman holds his post with a stay of %.0f s (%d)" % [NightRules.HOLD_STAY, stays])
+	var seeded: Person = men[0] as Person
+	(d._men[seeded] as Dictionary)["far"] = true  # a far-seeing checker's sight, stored as the hold took it
+	far[seeded] = true
+	t.check(crowd.wish_keepout.size() == 3, "before the teardown three rings are kept out of the wishes")
 	rules.finished = true  # the night is lost with every post still held
 	rules.won = false
 	_step(s)
@@ -307,6 +324,8 @@ static func _teardown_loss(t) -> void:
 			bad.append("post %s != town_post %s" % [m.post, m.town_post])
 		if d.busy(m) or crowd.held_by_mission(m):
 			bad.append("still held")
+		if m.post_held:
+			bad.append("still flagged held")
 		if m.watch_far != bool(far[p]):
 			bad.append("sight %s, was %s" % [m.watch_far, far[p]])
 	for p: Variant in folk.keys():
@@ -318,6 +337,45 @@ static func _teardown_loss(t) -> void:
 	t.check(bad.is_empty(), "after the teardown every held man is released (%d men, %d folk): %s" % [men.size(), folk.size(), "; ".join(bad.slice(0, 5))])
 	t.check(d._men.is_empty() and d._folk.is_empty() and d._turned.is_empty() and crowd.wish_keepout.is_empty(), "and the director keeps no man, no anchor, no turn and no keep-out")
 	_done(s)
+
+
+## A wall-loop man another director (or a wish) holds still walks the loop; one the board Warning holds at a post does not.
+static func _loop_men(t) -> void:
+	var s := _world(1, Town.Look.DAY, &"capital")
+	var crowd: Crowd = s.crowd
+	crowd.mission_holds.append(func(_p: Person) -> bool: return true)  # every man held by some other director
+	var rows: Array = []
+	for e in crowd._loops:
+		if is_instance_valid(e[0]) and rows.size() < 40:
+			rows.append(e)
+	t.check(not rows.is_empty(), "the town has wall-loop men")
+	var before: Array = rows.map(func(e: Array) -> int: return int(e[2]))
+	var kept := rows.duplicate()
+	for e in rows:
+		(e[0] as Person).post_held = false
+	for k in roundi(120.0 / DT):
+		_step(s)
+	var moved := 0
+	for i in rows.size():
+		moved += 1 if int(rows[i][2]) != int(before[i]) else 0
+	t.check(moved > 0, "loop men held by another director still walk their loop (%d of %d moved on)" % [moved, rows.size()])
+	_done(s)
+	s = _world(1, Town.Look.DAY, &"capital")
+	crowd = s.crowd
+	rows.clear()
+	for e in crowd._loops:
+		if is_instance_valid(e[0]):
+			rows.append(e)
+			(e[0] as Person).post_held = true
+	before = rows.map(func(e: Array) -> int: return int(e[2]))
+	for k in roundi(15.0 / DT):
+		_step(s)
+	moved = 0
+	for i in rows.size():
+		moved += 1 if int(rows[i][2]) != int(before[i]) else 0
+	t.check(not rows.is_empty() and moved == 0, "loop men the board Warning holds stay put (%d moved)" % moved)
+	_done(s)
+	City.use(&"aldermere")
 
 
 ## I9: no wisher or wish target is picked from within a post's ring (Crowd.wish_keepout), and no other mission sets one.

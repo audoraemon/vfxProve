@@ -975,7 +975,7 @@ func _walk_list(list: Array, reach: float, beats: bool) -> void:
 			continue
 		var p: Person = e[0]
 		if not p.is_alive() or (_rallied and not beats) or p.corps != Person.Corps.NONE or p.mind != Person.Mind.POST \
-				or guard_jobs.on_job(p) or held_by_mission(p) or (beats and not p.on_beat()):  # (a wall loop never walks on a man a mission holds: his post is the mission's)
+				or guard_jobs.on_job(p) or p.post_held or (beats and (not p.on_beat() or held_by_mission(p))):  # (a wall loop never walks on a man the board Warning holds at a post)
 			if beats:
 				e[4] = -1.0
 				e[5] = _clock

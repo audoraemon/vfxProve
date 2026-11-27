@@ -291,6 +291,7 @@ func _hold(p: Person, i: int, moved: bool, was: Vector2) -> void:
 		return
 	_men[p] = {"post": i, "moved": moved, "was": was, "far": p.watch_far}
 	p.watch_far = false
+	p.post_held = true
 
 
 ## The nearest ground to post `i` along the line out from it through `from`, at least `r` from every post and not already taken, inside the walls and
@@ -351,7 +352,7 @@ func _hush_step(delta: float) -> void:
 		patches.append(Rect2(_spots[i] - Vector2(reach, reach), Vector2(reach, reach) * 2.0))
 	var near := {}
 	for e in crowd._field.in_rects(patches):
-		if e is Person:
+		if e is Person and (crowd.soldiers.has(e) or crowd.citizens.has(e)):  # (the people of the crowd, not the rescue's or a shelter's)
 			near[e] = true
 	# A held man who is not near still loses his far sight (as it was when everyone was scanned).
 	for v: Variant in _men.keys():
@@ -403,6 +404,7 @@ func _release_posts() -> void:
 					rec.post = home  # his own post lies in a ring still held: he is let go with that one, never walked into it
 					continue
 				_give_back(p, rec)
+				_let_go(p, rec)
 				_men.erase(p)
 		for p: Variant in _folk.keys():
 			if int((_folk[p] as Dictionary).post) == i:
@@ -422,6 +424,13 @@ func _home_ring(p: Variant, held: Array[int]) -> int:
 			if from.lerp(home, float(k) / 12.0).distance_to(_spots[j]) < QUIET_R + QUIET_MARGIN + 0.5:
 				return j
 	return -1
+
+
+## A released man is no longer held by the director: his sight back (as a checker had it) and the wall loop may walk him on.
+func _let_go(p: Variant, rec: Dictionary) -> void:
+	if _alive(p):
+		(p as Person).watch_far = bool(rec.get("far", false))
+		(p as Person).post_held = false
 
 
 ## One soldier given back: his own `post` again (so `post == town_post`: GateCheck and GuardJobs take him as before), and back to it.
@@ -690,8 +699,7 @@ func teardown() -> void:
 	for p: Variant in _men.keys():
 		var rec := _men[p] as Dictionary
 		_give_back(p, rec)
-		if _alive(p):
-			(p as Person).watch_far = bool(rec.get("far", false))  # his sight back, as a checker had it
+		_let_go(p, rec)
 	_men.clear()
 	for p: Variant in _folk.keys():
 		if _alive(p):

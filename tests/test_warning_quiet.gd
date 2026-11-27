@@ -177,6 +177,14 @@ static func _g4(t) -> void:
 
 ## The release (B2): after a set-off the moved soldiers are no longer held, their `post` is their town post again, no town job takes them for a mission
 ## man; the two other posts stay held until their own set-offs.
+## Every soldier the director holds now, added to `seen` (each quarter second).
+static func _note(d: StarfallDirector, seen: Dictionary, k: int) -> void:
+	if k % SAMPLE_EVERY != 0:
+		return
+	for p: Variant in d._men.keys():
+		seen[p] = true
+
+
 static func _release(t) -> void:
 	var s := _world(1, Town.Look.DAY)
 	var d: StarfallDirector = s.d
@@ -194,7 +202,9 @@ static func _release(t) -> void:
 	for p in moved:
 		if int(held_for[p]) <= 1:
 			first.append(p)
-	var all_men: Array = held_for.keys()  # every soldier held at setup, moved or not (a checker held where he stood who was moved later too)
+	var all_men := {}  # every soldier ever held: at setup, moved or not, and those the hush takes in play after each set-off
+	for p: Variant in held_for.keys():
+		all_men[p] = true
 	var all_held := true
 	var off_town := true
 	for p in moved:
@@ -204,18 +214,20 @@ static func _release(t) -> void:
 	t.check(off_town, "a moved soldier's `post` is his new spot, never his `town_post`")
 	for k in roundi((float(StarfallDirector.STARS[0][0]) + 0.5) / DT):
 		_step(s)
+		_note(d, all_men, k)
 	t.check(not d.stars[0].at_post() and not d.posts_held().has(0) and d.posts_held().has(1) and d.posts_held().has(2),
 		"after the first set-off post 0 is let go and the other two stay held (%s)" % [d.posts_held()])
 	var later := d._men.size()
 	for k in roundi((float(StarfallDirector.STARS[2][0]) - float(StarfallDirector.STARS[0][0]) + 1.0) / DT):
 		_step(s)  # past the last set-off: every post is let go
+		_note(d, all_men, k)
 	t.check(d.posts_held().is_empty() and d._men.is_empty(), "after the last set-off no post is held and the director holds no soldier (%d held)" % d._men.size())
 	t.check(later > 0, "the other posts' men were still held after the first set-off")
 	# The release is about FIELDS (GateCheck and GuardJobs read `post == town_post`), never about where a man stands.
 	var bad: Array[String] = []
 	var bad_patrol: Array[String] = []
 	var counted := 0
-	for p: Variant in all_men:
+	for p: Variant in all_men.keys():
 		if not is_instance_valid(p) or not (p as Person).is_alive():
 			continue
 		var m := p as Person
@@ -231,6 +243,22 @@ static func _release(t) -> void:
 			(bad_patrol if m.post_group == 3 else bad).append("%s (group %d, corps %d)%s" % [str(m.get_instance_id()), m.post_group, m.corps, why])
 	t.check(counted >= 6 and bad.is_empty(), "every held or moved soldier (%d) has `post == town_post` again and is no town job's mission man: %s" % [counted, "; ".join(bad)])
 	t.check(bad_patrol.is_empty(), "a patrol man has his loop back too (post == town_post, not held): %s" % "; ".join(bad_patrol))
+	var patrol: Person = null
+	for p: Variant in all_men.keys():
+		if is_instance_valid(p) and (p as Person).is_alive() and (p as Person).post_group == 3 and (p as Person).corps == Person.Corps.NONE:
+			patrol = p as Person
+			break
+	t.check(patrol != null, "a patrol man was held at some post")
+	if patrol != null:
+		var seen_at: Array[Vector2] = []
+		for k in roundi(40.0 / DT):
+			_step(s)
+			if k % 20 == 0:
+				seen_at.append(patrol.ground_pos)
+		var reach := 0.0
+		for v in seen_at:
+			reach = maxf(reach, v.distance_to(seen_at[0]))
+		t.check(reach > 1.0, "a released patrol man walks his beat again (he went %.1f from where he stood over 40 s)" % reach)
 	_done(s)
 
 

@@ -235,8 +235,10 @@ func _gap(p: Person, i: int, how: Gap) -> float:
 func _move_soldier(p: Person, i: int, used: Array[Vector2], place := true) -> void:
 	var from := p.anchor if p.anchor.distance_to(_spots[i]) < p.ground_pos.distance_to(_spots[i]) else p.ground_pos
 	var at := _out_spot(from, i, used, QUIET_R + QUIET_MARGIN, true, Vector2.INF if place else p.ground_pos)  # in play he walks out: a way that never leads in
+	if at == Vector2.INF:
+		at = _clear_spot(p.ground_pos, used, place)  # no straight way out: the nearest ground that is clear, set there (setup) or walked to (in play)
 	if at == Vector2.INF and not place:
-		at = p.ground_pos  # no way out that leads away: he stands where he is, held
+		at = p.ground_pos  # nothing at all in reach: he stands where he is, held
 	if at == Vector2.INF:
 		_hold(p, i, false, p.post)
 		return
@@ -252,6 +254,35 @@ func _move_soldier(p: Person, i: int, used: Array[Vector2], place := true) -> vo
 		p.ground_pos = at
 		p._path = PackedVector2Array()
 		p._target = at
+
+
+## The nearest walkable ground to `from` (inside the walls, not taken, in a clear line from `from`) that is quiet: at setup at least QUIET_R + QUIET_MARGIN from
+## every post; in play more than Crowd.DOOM_WITNESS (plus a hand's breadth) from every waiting watchman, so whoever stands there is no witness. Vector2.INF for none.
+func _clear_spot(from: Vector2, used: Array[Vector2], setup: bool) -> Vector2:
+	var grid := crowd._grid
+	var watchers: Array[Vector2] = []
+	for k in posts_held():
+		watchers.append(stars[k].watchman.ground_pos)
+	for step in range(1, 17):
+		var d := 0.5 * float(step)
+		for a in 16:
+			var v := from + Vector2.RIGHT.rotated(TAU * float(a) / 16.0) * d
+			if grid != null and (not grid.walkable(v) or not grid.clear_line(from, v)):
+				continue
+			if Walls.outside(v):
+				continue
+			var fits := true
+			if setup:
+				for sp in _spots:
+					fits = fits and sp.distance_to(v) >= QUIET_R + QUIET_MARGIN - 0.01
+			else:
+				for w in watchers:
+					fits = fits and w.distance_to(v) > Crowd.DOOM_WITNESS + 0.25
+			for u in used:
+				fits = fits and u.distance_to(v) >= 0.8
+			if fits:
+				return v
+	return Vector2.INF
 
 
 ## Holds `p` for post `i` (busy): `moved` says his `post` was changed and must be given back, `was` what it was.

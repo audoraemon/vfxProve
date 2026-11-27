@@ -73,8 +73,8 @@ static func _rows(t) -> void:
 		and String(rows[0][0]) == d.wishes[0].hud_text(s.rules), "the wishes heard, each a row, open (%s)" % [rows])
 	var hows := hud.wish_hows()
 	t.check(hows.size() == 2 and String(hows[0]) == d.wishes[0].def.how and String(hows[0]) != ""
-		and hud.wishes_rect().size.y == 5.0 + Hud.ROW_H * 4.0,
-		"open, each wish says what to do on a line of its own (2026-11-19, Discord 'Wish not clear') (%s)" % [hows])
+		and hud.wishes_rect().size.y == 5.0 + Hud.ROW_H * 2.0,
+		"open, each wish knows what to do (2026-11-19, Discord 'Wish not clear'); the left stack keeps one row a wish (%s)" % [hows])
 	d.wishes[0].status = Objective.Status.DONE
 	d.wishes[1].status = Objective.Status.FAILED
 	t.check(String(hud.wish_rows()[0][1]) == "granted" and String(hud.wish_rows()[1][1]) == "failed", "granted ticks, failed crosses")

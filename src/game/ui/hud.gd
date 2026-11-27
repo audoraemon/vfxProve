@@ -99,8 +99,6 @@ const SKIP_TEXT := "SPACE TO SKIP"
 ## The wishes (v0.11 M1, spec §5.2): a row each under the how-to-win plate, ROW_H tall, with an open box (WISH_BOX square), a
 ## tick once granted, or a cross and the words struck through once failed.
 const WISH_BOX := 7.0
-## How far a wish's how-line sits in from its words (wish_hows()).
-const HOW_INDENT := 6.0
 ## The ASCEND plate (spec §6): centred above the slot row, clear of a focused power's modes; its word (22 u) and its key. 112 x 28 at the
 ## least; wider when the word and its key need it.
 const ASCEND_SIZE := Vector2(112.0, 28.0)
@@ -677,12 +675,7 @@ func _wishes_plate(hint: Rect2) -> Rect2:
 	var wide := 0.0
 	for row: Array in rows:
 		wide = maxf(wide, UiTheme.width(String(row[0]), UiTheme.TEXT_S))
-	var lines := rows.size()
-	for how: String in wish_hows_shown():
-		if how != "":
-			wide = maxf(wide, HOW_INDENT + UiTheme.width(how, UiTheme.TEXT_S))
-			lines += 1
-	return Rect2(2.0, _wishes_top_under(hint), wide + 22.0, 5.0 + ROW_H * float(lines))
+	return Rect2(2.0, _wishes_top_under(hint), wide + 22.0, 5.0 + ROW_H * float(rows.size()))
 
 
 ## The left HUD stack as drawn this frame (v0.11 M6, mission spec §6.4): from the screen's corner to the right edge of the widest of the
@@ -736,7 +729,9 @@ func _granted(rows: Array) -> int:
 
 
 ## What to do for each wish heard (Discord #ideas "Wish not clear", 2026-11-19): WishDef.how, row for row with wish_rows(), ""
-## for a wish no longer open (granted or failed: nothing left to do) or one with no how-line.
+## for a wish no longer open (granted or failed: nothing left to do) or one with no how-line. Drawn on the prayers plate only
+## (_draw_prayers()); the wish rows in the left stack stay one line each, so the stack keeps clear of the missions' camera
+## spots (the user, 2026-11-27).
 func wish_hows() -> Array:
 	var out := []
 	if _rules == null or _rules.descent == null:
@@ -744,14 +739,6 @@ func wish_hows() -> Array:
 	for w in _rules.descent.wishes:
 		out.append(w.def.how if w.def != null and w.status == Objective.Status.PENDING else "")
 	return out
-
-
-## The how-lines as drawn, row for row with wish_rows_shown(): none under the collapsed summary row.
-func wish_hows_shown() -> Array:
-	var rows := wish_rows()
-	if details or rows.is_empty():
-		return wish_hows()
-	return [""]
 
 
 ## The wishes' rows as drawn: collapsed, the one summary row (never nothing: a failed wish still shows in the count).
@@ -1817,9 +1804,7 @@ func _draw_wishes() -> void:
 	var top := wishes_top()
 	draw_rect(wishes_rect(), UiTheme.COL_PANEL)
 	var y := top + 12.0
-	var hows := wish_hows_shown()
-	for r in rows.size():
-		var row: Array = rows[r]
+	for row: Array in rows:
 		var text := String(row[0])
 		var state := String(row[1])
 		var box := Vector2(6.0, y - 8.0)
@@ -1834,10 +1819,6 @@ func _draw_wishes() -> void:
 		if state == "failed":
 			draw_line(Vector2(18.0, y - 4.0), Vector2(18.0 + UiTheme.width(text, UiTheme.TEXT_S), y - 4.0), UiTheme.COL_DIM, 1.0)
 		y += ROW_H
-		var how := String(hows[r]) if r < hows.size() else ""
-		if how != "":
-			UiTheme.text(self, Vector2(18.0 + HOW_INDENT, y), how, UiTheme.TEXT_S, UiTheme.COL_DIM)
-			y += ROW_H
 
 
 ## The plates that wait for play (v0.11.1: not drawn during the intro): the Gaze bar, the strip, the objectives, the how-to-win

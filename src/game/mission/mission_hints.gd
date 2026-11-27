@@ -20,10 +20,10 @@ const LINES := {
 	# --- clarity block: intercept ---
 	"warning": WARNING_LINE,
 	"warning.relay": WARNING_RELAY,
-	"warning.stars": "Kill the messenger (gold) unseen (red), banish him, or calm the town. Or kill a man just outside his gate as he stares.",
-	"warning.running": "The messenger (gold) runs for the bellkeeper (blue). Kill him unseen (red), banish him, or calm the town.",
+	"warning.posts": "Each watchman (gold) sets off when his tag runs out. Kill him unseen, banish or lead him out of the walls, or confuse him.",
+	"warning.running": "The watchman (gold) runs for the bellkeeper (blue). Kill him unseen (red), or banish or lead him out of the walls.",
+	"warning.broken": "The bell is broken: a watchman (gold) who sets off walks to the Temple. Time only. Kill, banish, lead or confuse him.",
 	"warning.bell": WARNING_BELL,
-	"warning.waiting": "That warning is dead. Watch the next star's gate (gold). A death just outside it as he stares draws its watchman out.",
 	"omen": WARNING_LINE,
 	"omen.relay": WARNING_RELAY,
 	"omen.bell": WARNING_BELL,

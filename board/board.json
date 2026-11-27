@@ -1,10 +1,14 @@
 {
- "hash": "fee9f9b3965a29dd",
- "updated": "2026-11-27T00:45:26+07:00",
+ "hash": "66b46aa5a3931a75",
+ "updated": "2026-11-27T18:12:36+07:00",
  "changes": {
-  "date": "<t:1795715126:f>",
+  "date": "<t:1795777956:f>",
   "items": [
-   "New: Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups"
+   "Done: Veil ability levels: the dark watches back",
+   "Done: Veil authority tree and powers",
+   "Done: Veil abilities review: previews, stronger effects, second pass",
+   "Done: Veil twists, second round: Dread, Swallowing Dark, Evernight",
+   "New: Veil landed in Develop-Main (powers, review, levels, twists 2, icons)"
   ]
  },
  "snapshot": {
@@ -1734,20 +1738,20 @@
    },
    "veil-ability-levels": {
     "title": "Veil ability levels: the dark watches back",
-    "status": "doing",
+    "status": "done",
     "area": "Abilities",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "god/veil-levels",
-    "updated": "2026-11-26",
+    "updated": "2026-11-27",
     "order": 7
    },
    "veil-authority-powers": {
     "title": "Veil authority tree and powers",
-    "status": "doing",
+    "status": "done",
     "area": "Abilities",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "god/veil-powers",
-    "updated": "2026-11-21",
+    "updated": "2026-11-27",
     "order": 5
    },
    "veil-icons": {
@@ -1759,22 +1763,31 @@
     "updated": "2026-11-26",
     "order": 907
    },
+   "veil-landing": {
+    "title": "Veil landed in Develop-Main (powers, review, levels, twists 2, icons)",
+    "status": "done",
+    "area": "Abilities",
+    "needs_you": false,
+    "branch": "god/veil-land",
+    "updated": "2026-11-27",
+    "order": 7
+   },
    "veil-review-adjust": {
     "title": "Veil abilities review: previews, stronger effects, second pass",
-    "status": "doing",
+    "status": "done",
     "area": "Abilities",
-    "needs_you": true,
+    "needs_you": false,
     "branch": "god/veil-review",
-    "updated": "2026-11-22",
+    "updated": "2026-11-27",
     "order": 6
    },
    "veil-twists-2": {
     "title": "Veil twists, second round: Dread, Swallowing Dark, Evernight",
-    "status": "doing",
+    "status": "done",
     "area": "Abilities",
     "needs_you": false,
     "branch": "god/veil-twists-2",
-    "updated": "2026-11-26",
+    "updated": "2026-11-27",
     "order": 7
    },
    "vfx-anathema": {
@@ -2051,89 +2064,49 @@
   },
   "branches": [
    {
+    "name": "land/god-chamber",
+    "ahead": 95,
+    "behind": 100,
+    "date": "2026-11-27",
+    "subject": "test: track the threat wiring suite's uid (made by --import after the merge)",
+    "pushed": false
+   },
+   {
     "name": "feat/god-chamber",
     "ahead": 93,
-    "behind": 171,
+    "behind": 271,
     "date": "2026-11-27",
     "subject": "fix: the World Map's first frame is warmed while the god stands in the Chamber",
-    "pushed": true
-   },
-   {
-    "name": "feat/world-map-art",
-    "ahead": 93,
-    "behind": 171,
-    "date": "2026-11-27",
-    "subject": "fix: the World Map's first frame is warmed while the god stands in the Chamber",
-    "pushed": false
-   },
-   {
-    "name": "land/wish-clarity",
-    "ahead": 3,
-    "behind": 0,
-    "date": "2026-11-27",
-    "subject": "test: re-record 25 references the Develop-Main merge moved (same outcome as 0a293ea0); notes for merge 2",
-    "pushed": false
-   },
-   {
-    "name": "god/veil-land",
-    "ahead": 96,
-    "behind": 21,
-    "date": "2026-11-26",
-    "subject": "fix: the Veil's eight new skill-tree powers name their main cue and school (LevelSound.MAIN)",
-    "pushed": false
-   },
-   {
-    "name": "god/veil-twists-2",
-    "ahead": 91,
-    "behind": 171,
-    "date": "2026-11-26",
-    "subject": "fix: Veil twists 2 final-review wave (edge kind, craters end with the act, pull and eye fixes, docs)",
-    "pushed": false
-   },
-   {
-    "name": "god/veil-levels",
-    "ahead": 83,
-    "behind": 171,
-    "date": "2026-11-26",
-    "subject": "docs: the Swallowing Dark's bench note names its cause as a guess",
     "pushed": true
    },
    {
     "name": "feat/warning-rework",
-    "ahead": 8,
-    "behind": 21,
-    "date": "2026-11-26",
-    "subject": "test: T3 fix round: real K2 fold failure, W-R14 moved pin, win waits for a live carrier, SOONER over TIME",
+    "ahead": 17,
+    "behind": 121,
+    "date": "2026-11-27",
+    "subject": "fix: final-review wave for The Warning rework (verb steps, cheaper hush, teardown, Ember banner, Smite aim, Capital G3)",
+    "pushed": false
+   },
+   {
+    "name": "land/wish-clarity",
+    "ahead": 4,
+    "behind": 100,
+    "date": "2026-11-27",
+    "subject": "test: re-record the nine board route rows wish clarity moves",
     "pushed": false
    },
    {
     "name": "feat/wish-clarity",
     "ahead": 3,
-    "behind": 21,
+    "behind": 121,
     "date": "2026-11-26",
     "subject": "fix: wish how-lines move from the TAB list to the hint plate (the first open wish), keeping the HUD stack's depth",
     "pushed": false
    },
    {
-    "name": "god/veil-review",
-    "ahead": 64,
-    "behind": 171,
-    "date": "2026-11-22",
-    "subject": "docs: the final review's corrections to the second pass's summary, rulings and spec",
-    "pushed": true
-   },
-   {
-    "name": "god/veil-powers",
-    "ahead": 33,
-    "behind": 171,
-    "date": "2026-11-21",
-    "subject": "test: re-record the 113 reference rows that cast a Veil power",
-    "pushed": true
-   },
-   {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 271,
+    "behind": 371,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2141,7 +2114,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 646,
+    "behind": 746,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2149,7 +2122,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 1144,
+    "behind": 1244,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2157,7 +2130,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 1102,
+    "behind": 1202,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -2166,7 +2139,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-27",
-   "subject": "test: re-record 25 references the Develop-Main merge moved (same outcome as 0a293ea0); notes for merge 2"
+   "subject": "test: re-record the 70 references the fair-life merge moves on the Veil landing"
   }
  }
 }

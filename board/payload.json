@@ -7,12 +7,17 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release (`kak-fair-life`)\n**16** in progress · **30** to do · **179** done\n**14** active branches besides Develop-Main\n\n**Since the last update** (<t:1795715126:f>)\n• New: Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups",
+     "description": "**v0.12** is the latest release (`kak-fair-life`)\n**12** in progress · **30** to do · **184** done\n**9** active branches besides Develop-Main\n\n**Since the last update** (<t:1795777956:f>)\n• Done: Veil ability levels: the dark watches back\n• Done: Veil authority tree and powers\n• Done: Veil abilities review: previews, stronger effects, second pass\n• Done: Veil twists, second round: Dread, Swallowing Dark, Evernight\n• New: Veil landed in Develop-Main (powers, review, levels, twists 2, icons)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-27T00:45:26+07:00"
+     "timestamp": "2026-11-27T18:12:36+07:00"
+    },
+    {
+     "title": "land/god-chamber",
+     "description": "95 commits not in Develop-Main · last commit today · local only\n> test: track the threat wiring suite's uid (made by --import after the merge)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
     },
     {
      "title": "feat/god-chamber",
@@ -20,55 +25,18 @@
      "color": 5016537
     },
     {
-     "title": "feat/world-map-art",
-     "description": "93 commits not in Develop-Main · last commit today · local only\n> fix: the World Map's first frame is warmed while the god stands in the Chamber\n\n_No Ledger task points at this branch._",
+     "title": "feat/warning-rework",
+     "description": "17 commits not in Develop-Main · last commit today · local only\n> fix: final-review wave for The Warning rework (verb steps, cheaper hush, teardown, Ember banner, Smite aim, Capital G3)\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "land/wish-clarity",
-     "description": "3 commits not in Develop-Main · last commit today · local only\n> test: re-record 25 references the Develop-Main merge moved (same outcome as 0a293ea0); notes for merge 2\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/veil-land",
-     "description": "96 commits not in Develop-Main · last commit yesterday · local only\n> fix: the Veil's eight new skill-tree powers name their main cue and school (LevelSound.MAIN)\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/veil-twists-2",
-     "description": "91 commits not in Develop-Main · last commit yesterday · local only\n> fix: Veil twists 2 final-review wave (edge kind, craters end with the act, pull and eye fixes, docs)\n\n**In progress** (1)\n• Veil twists, second round: Dread, Swallowing Dark, Evernight",
-     "color": 5016537
-    },
-    {
-     "title": "god/veil-levels",
-     "description": "83 commits not in Develop-Main · last commit yesterday\n> docs: the Swallowing Dark's bench note names its cause as a guess\n\n**In progress** (1)\n• Veil ability levels: the dark watches back — **needs you**",
-     "color": 5016537
-    },
-    {
-     "title": "feat/warning-rework",
-     "description": "8 commits not in Develop-Main · last commit yesterday · local only\n> test: T3 fix round: real K2 fold failure, W-R14 moved pin, win waits for a live carrier, SOONER over TIME\n\n_No Ledger task points at this branch._",
+     "description": "4 commits not in Develop-Main · last commit today · local only\n> test: re-record the nine board route rows wish clarity moves\n\n_No Ledger task points at this branch._",
      "color": 5016537
     },
     {
      "title": "feat/wish-clarity",
      "description": "3 commits not in Develop-Main · last commit yesterday · local only\n> fix: wish how-lines move from the TAB list to the hint plate (the first open wish), keeping the HUD stack's depth\n\n_No Ledger task points at this branch._",
-     "color": 5016537
-    },
-    {
-     "title": "god/veil-review",
-     "description": "64 commits not in Develop-Main · last commit 5 days ago\n> docs: the final review's corrections to the second pass's summary, rulings and spec\n\n**In progress** (1)\n• Veil abilities review: previews, stronger effects, second pass — **needs you**",
-     "color": 5016537
-    }
-   ]
-  },
-  {
-   "allowed_mentions": {
-    "parse": []
-   },
-   "embeds": [
-    {
-     "title": "god/veil-powers",
-     "description": "33 commits not in Develop-Main · last commit 6 days ago\n> test: re-record the 113 reference rows that cast a Veil power\n\n**In progress** (1)\n• Veil authority tree and powers — **needs you**",
      "color": 5016537
     },
     {
@@ -90,15 +58,22 @@
      "title": "feat/capital-city",
      "description": "merged into Develop-Main · last commit 49 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
      "color": 7041664
-    },
+    }
+   ]
+  },
+  {
+   "allowed_mentions": {
+    "parse": []
+   },
+   "embeds": [
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-27\n> test: re-record 25 references the Develop-Main merge moved (same outcome as 0a293ea0); notes for merge 2\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you** _(quiet since 11-10)_\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n• Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune\n\n**To do** (25)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Soldier duties: frame-rate bench on a quiet machine\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-27\n> test: re-record the 70 references the fair-life merge moves on the Veil landing\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you** _(quiet since 11-10)_\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n• Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune\n\n**To do** (25)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Soldier duties: frame-rate bench on a quiet machine\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups _(11-27)_\n• Veil ability icons (Codex CLI) _(11-26)_\n• Remove the soldiers' march sound _(11-25)_\n• Loss warning on every mission (Informer, Escort, Raze, Assassinate...) _(11-25)_\n• Soldier duties: Citadel guard, patrols, corpse duty, cordon, sweep, gate check, shelter escort _(11-25)_\n• Mission clarity: every step says what to do; why-not banners _(11-24)_\n• Might gauge: every learned ability in an Endless Night, paid from a refilling gauge _(11-23)_\n• Town Suspicion: weather-like powers raise doubt before the bell _(11-23)_",
+     "description": "• Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups _(11-27)_\n• Veil ability levels: the dark watches back _(11-27)_\n• Veil landed in Develop-Main (powers, review, levels, twists 2, icons) _(11-27)_\n• Veil twists, second round: Dread, Swallowing Dark, Evernight _(11-27)_\n• Veil abilities review: previews, stronger effects, second pass _(11-27)_\n• Veil authority tree and powers _(11-27)_\n• Veil ability icons (Codex CLI) _(11-26)_\n• Remove the soldiers' march sound _(11-25)_",
      "color": 10185686
     }
    ]

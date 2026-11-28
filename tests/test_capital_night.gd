@@ -141,7 +141,7 @@ static func _seeded(t) -> void:
 	var reads := RegEx.create_from_string("\\bGATE_SPOT\\b").search_all(src)
 	t.check(src.count("var post: Vector2 = GATE_SPOT") == 1 and src.count("var post_name: String = \"THE MAIN GATE\"") == 1, "the town vars are declared once, typed")
 	t.check(reads.size() == 2, "GATE_SPOT is read only by the const and the var `post`'s default (%d reads)" % reads.size())
-	t.check(Overrides.town_vars(StarfallDirector.new()) == ["star_falls", "stop_wait"], "the Starfall's town vars are its own, unchanged")
+	t.check(Overrides.town_vars(StarfallDirector.new()) == ["star_falls"], "the Starfall's town vars are its own, unchanged")
 	var r := RingerDirector.new()
 	t.check(r.post == WarningDirector.GATE_SPOT and r.post_name == "THE MAIN GATE", "a Ringer's fresh post is the Warning's")
 

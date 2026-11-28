@@ -1,19 +1,19 @@
 {
- "hash": "8c65f07956f3cb6c",
- "updated": "2026-11-28T03:07:38+07:00",
+ "hash": "0bc4e64bf3d2cf18",
+ "updated": "2026-11-28T07:37:21+07:00",
  "changes": {
-  "date": "<t:1795810058:f>",
+  "date": "<t:1795826241:f>",
   "items": [
-   "Done: God's Chamber (hub replacement)",
-   "New: Veil frame-rate bench on a quiet machine (in progress)"
+   "New: Mission rework: The Warning",
+   "New: Wish clarity: how to grant each wish"
   ]
  },
  "snapshot": {
   "project": {
    "version": "v0.12",
-   "tag": "kak-fair-life",
-   "tests": 25628,
-   "updated": "2026-11-27"
+   "tag": "",
+   "tests": 30213,
+   "updated": "2026-11-28"
   },
   "tasks": {
    "ability-icons-pixellab": {
@@ -2022,6 +2022,26 @@
     "updated": "2026-11-05",
     "order": 200
    },
+   "warning-rework": {
+    "title": "Mission rework: The Warning",
+    "status": "done",
+    "area": "Design",
+    "version": "v0.12",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-28",
+    "order": 920
+   },
+   "wish-clarity": {
+    "title": "Wish clarity: how to grant each wish",
+    "status": "done",
+    "area": "UI",
+    "version": "v0.12",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-28",
+    "order": 919
+   },
    "world-display-2x": {
     "title": "Fix: world drawn 2x too big after the title/board path (tags off, sliding on pan)",
     "status": "done",
@@ -2070,17 +2090,9 @@
   },
   "branches": [
    {
-    "name": "land/wish-clarity",
-    "ahead": 28,
-    "behind": 0,
-    "date": "2026-11-28",
-    "subject": "test: re-record the 47 Capital references the Veil merge moved",
-    "pushed": false
-   },
-   {
     "name": "feat/wish-clarity",
-    "ahead": 4,
-    "behind": 98,
+    "ahead": 3,
+    "behind": 126,
     "date": "2026-11-27",
     "subject": "test: re-record the 70 references the fair-life merge moves on the Veil landing",
     "pushed": false
@@ -2088,7 +2100,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 469,
+    "behind": 498,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2096,7 +2108,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 844,
+    "behind": 873,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2104,7 +2116,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 1342,
+    "behind": 1371,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2112,7 +2124,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 1300,
+    "behind": 1329,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -2121,7 +2133,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-28",
-   "subject": "test: re-record the 47 Capital references the Veil merge moved"
+   "subject": "test: the Capital night check reads the Starfall's one town var after the Warning rework"
   }
  }
 }

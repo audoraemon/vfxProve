@@ -1,11 +1,10 @@
 {
- "hash": "0bc4e64bf3d2cf18",
- "updated": "2026-11-28T07:37:21+07:00",
+ "hash": "f459ef3d0f150d00",
+ "updated": "2026-11-28T07:38:27+07:00",
  "changes": {
-  "date": "<t:1795826241:f>",
+  "date": "<t:1795826307:f>",
   "items": [
-   "New: Mission rework: The Warning",
-   "New: Wish clarity: how to grant each wish"
+   "New: Play test The Warning rework"
   ]
  },
  "snapshot": {
@@ -2021,6 +2020,16 @@
     "branch": "feat/town-lighting",
     "updated": "2026-11-05",
     "order": 200
+   },
+   "warning-rework-playtest": {
+    "title": "Play test The Warning rework",
+    "status": "todo",
+    "area": "Design",
+    "version": "v0.12",
+    "needs_you": true,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-28",
+    "order": 921
    },
    "warning-rework": {
     "title": "Mission rework: The Warning",

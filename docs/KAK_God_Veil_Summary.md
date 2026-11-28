@@ -431,7 +431,9 @@ What only you can judge:
 
 Bench (2026-11-25, `961a9046`, loaded machine, level 5 against the base, bar 1.55): Dread of the Dark 0.99, Shadow Play 1.23,
 The Swallowing Dark 0.52, Evernight 1.25, Evernight + Unseen Hour 1.38, Evernight + Dread of the Dark 1.51 (worst single
-pair 1.53). The table is in `docs/KAK_God_Veil_Rulings.md`, section "Bench". A bench on a quiet machine is still owed.
+pair 1.53). The table is in `docs/KAK_God_Veil_Rulings.md`, section "Bench". On a quiet machine (2026-11-28, `871ebaf6`, `--always-on-top`): Dread 0.92, Shadow Play 0.97, the Swallowing Dark 0.86,
+Evernight 1.04, Evernight + Unseen Hour 1.28 (the worst), Evernight + Dread 1.06; the loaded readings above were mostly a
+throttled background window, not load.
 
 Check results on `961a9046` (2026-11-25):
 

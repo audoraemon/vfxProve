@@ -758,7 +758,23 @@ The bar is level 5 against the base at 1.55 or under.
 
 Every pair is under the bar. The closest is Evernight with Dread of the Dark: 1.51 on the means, 1.53 on its worst single
 pair (42.05 against 27.45). The Swallowing Dark runs faster than the base, most likely because the people it has taken are no
-longer drawn or stepped (cause not measured). No run logged a script error. A bench on a quiet machine is still owed.
+longer drawn or stepped (cause not measured). No run logged a script error.
+
+**Quiet machine, 2026-11-28** (Develop-Main `871ebaf6`, nothing else running, `--bench --seed=7 --always-on-top`, level 5,
+three alternating pairs per row, mean frame time in ms):
+
+| Cast | Base | Level 5 | Level 5 : base |
+|---|---|---|---|
+| Dread of the Dark | 7.79 | 7.19 | 0.92 |
+| Shadow Play | 8.19 | 7.92 | 0.97 |
+| The Swallowing Dark | 8.11 | 6.95 | 0.86 |
+| Evernight | 8.11 | 8.44 | 1.04 |
+| Evernight + Unseen Hour | 8.10 | 10.39 | 1.28 |
+| Evernight + Dread of the Dark | 8.13 | 8.61 | 1.06 |
+
+Every row is under the 1.55 bar. The worst is Evernight with Unseen Hour (1.27-1.29); Evernight with Dread is 1.05-1.08,
+not the 1.51 above. The readings of about 26 ms above were most likely not load: a windowed bench that opens behind other
+windows is throttled by Windows to about 27 ms a frame with the GPU idle. Pass `--always-on-top` to every bench run.
 
 ## Twists, second round (prefix VT)
 

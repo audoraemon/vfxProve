@@ -24,6 +24,7 @@ static func run(t) -> void:
 	_labels_clear(t)
 	_refusal_fits(t)
 	_value_columns(t)
+	_level_lines_every_power(t)
 	_crisp_only(t)
 	_pulse(t)
 	_mini_cells(t)
@@ -414,29 +415,105 @@ static func _refusal_fits(t) -> void:
 	t.check(SkillTreeScreen.refusal_lines("one two three four five six seven eight nine ten eleven twelve").size() == 2, "a long text is cut to 2 lines")
 
 
+## The level column's layout (level_lines): the values in shared columns sized from their text, every new value ending at the right edge,
+## the arrows of a table's one-line rows lined up, labels whole; a row too wide drops or stacks its old value instead of overlapping.
 static func _value_columns(t) -> void:
 	var rows := [{"label": "Damage", "old": "10", "new": "14"}, {"label": "Radius", "old": "4.0", "new": "4.5"},
 		{"label": "Cooldown", "old": "8.0", "new": "10.25"}, {"label": "Fire", "old": "yes", "new": "yes"}, {"label": "Might", "old": "9", "new": "12"}]
-	var cols := SkillTreeScreen.value_columns(rows)
-	var right := SkillTreeScreen.LEVEL_X + SkillTreeScreen.LEVEL_W - 6.0
-	t.check(is_equal_approx(float(cols.right), right) and is_equal_approx(right, 513.0), "the column's right edge is 513")
-	t.check(float(cols.arrow_x) > float(cols.old_right) and float(cols.arrow_x) < right, "the arrow sits between the old values and the new ones")
+	var lines := SkillTreeScreen.level_lines(rows, 6)
+	t.check(is_equal_approx(SkillTreeScreen.LEVEL_RIGHT, 513.0) and lines.size() == 5, "five short rows take five lines, right edge 513")
+	var ends := {}
+	var arrows := {}
 	var olds := {}
-	var news := {}
-	var wide := 0.0
-	for row: Dictionary in rows:
-		var lay := SkillTreeScreen.row_layout(row, cols)
-		news[snappedf(float(lay.new_x) + UiTheme.width(String(lay["new"]), SkillTreeScreen.SMALL_PX), 0.001)] = true
-		if lay.changed:
-			olds[snappedf(float(lay.old_x) + UiTheme.width(String(lay.old), SkillTreeScreen.SMALL_PX), 0.001)] = true
-			wide = maxf(wide, UiTheme.width(String(lay["new"]), SkillTreeScreen.SMALL_PX))
-	t.check(news.size() == 1 and is_equal_approx(float(news.keys()[0]), right), "every new value ends at the right edge (%s)" % [news.keys()])
-	t.check(olds.size() == 1 and is_equal_approx(float(olds.keys()[0]), float(cols.old_right)), "every old value ends at old_right (%s)" % [olds.keys()])
-	t.check(is_equal_approx(float(cols.new_w), wide), "the new column is as wide as the widest changed new value")
-	t.check(not SkillTreeScreen.row_layout(rows[3], cols).changed, "an unchanged row shows its value alone")
+	for pieces: Array in lines:
+		for p: Dictionary in pieces:
+			var end := snappedf(float(p.x) + UiTheme.width(String(p.text), SkillTreeScreen.SMALL_PX), 0.001)
+			if p.kind == "new" or p.kind == "same":
+				ends[end] = true
+			elif p.kind == "arrow":
+				arrows[p.x] = true
+			elif p.kind == "old":
+				olds[end] = true
+	t.check(ends.size() == 1 and is_equal_approx(float(ends.keys()[0]), 513.0), "every value ends at the right edge (%s)" % [ends.keys()])
+	t.check(arrows.size() == 1 and olds.size() == 1, "the arrows and the old values line up (%s, %s)" % [arrows.keys(), olds.keys()])
+	t.check(_line_text(lines[3]) == "Fire|yes", "an unchanged row shows its value alone (%s)" % _line_text(lines[3]))
 	t.check(SkillTreeScreen.num("4.0") == "4" and SkillTreeScreen.num("10.25") == "10.25" and SkillTreeScreen.num("1.05") == "1.05", "num drops a needless .0 only")
 	var m := SkillTreeScreen.might_row("30 -> 34")
 	t.check(m.old == "30" and m["new"] == "34" and SkillTreeScreen.might_row("30").old == "30", "the Might line splits into old and new")
+	# The reported Silent Doom 1 -> 2 (Veil, 2026-11-28): "radius" hid under "0.8 / 1.6", "cooldown" read "cool", "dusk" under "3 for 20 s".
+	var slot := GodSlot.make(1, "veil", 7)
+	slot.learned = {"doom": 1}
+	var doom := SkillTreeScreen.level_lines(SkillTreeScreen.level_rows_of(TreeDetail.level_column(slot, "doom")), SkillTreeScreen.level_line_count())
+	var problems := _level_problems(doom, ["radius", "cooldown", "dusk", "Might"])
+	t.check(problems.is_empty(), "Silent Doom 1 -> 2: every label whole and clear of its values (%s)" % [problems])
+	var text := PackedStringArray()
+	for pieces: Array in doom:
+		text.append(_line_text(pieces))
+	t.check(" / ".join(text).contains("0.8 / 1.6|->|0.8 / 1.75"), "Silent Doom 1 -> 2 still shows the radius old and new (%s)" % " / ".join(text))
+
+
+## Every power at every level (LEARN, LEVEL 1 -> 2 ... 4 -> 5, MAX): the level column's lines fit its line count and width, every row
+## is there with its label whole, and no two pieces of a line meet. (The column is in design units: the same
+## at every window size.)
+static func _level_lines_every_power(t) -> void:
+	var bad := PackedStringArray()
+	var checked := 0
+	for type: String in GodTree.RING:
+		for tier in range(1, GodTree.TIERS + 1):
+			for i in GodTree.PER_TIER:
+				var key := GodTree.spot(type, tier, i)
+				if key == "":
+					continue
+				for have in range(0, PowerBook.MAX_LEVEL + 1):
+					var slot := GodSlot.make(1, type, 7)
+					slot.learned = {} if have == 0 else {key: have}
+					var col := TreeDetail.level_column(slot, key)
+					var rows := SkillTreeScreen.level_rows_of(col)
+					var labels: Array = []
+					for r: Dictionary in rows:
+						labels.append(String(r.label))
+					var lines := SkillTreeScreen.level_lines(rows, SkillTreeScreen.level_line_count())
+					checked += 1
+					for p in _level_problems(lines, labels):
+						bad.append("%s L%d: %s" % [key, have, p])
+	t.check(checked >= 300, "every power's level column checked at every level (%d)" % checked)
+	t.check(bad.is_empty(), "every level column fits, whole and apart (%d problems: %s)" % [bad.size(), bad.slice(0, 8)])
+
+
+## What is wrong with a level_lines() result for rows labelled `labels`: too many lines, a piece outside the column, two pieces of a line
+## closer than 4 u (1.5 u beside an arrow), a label missing or not whole.
+static func _level_problems(lines: Array, labels: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	if lines.size() > SkillTreeScreen.level_line_count():
+		out.append("%d lines" % lines.size())
+	var seen: Array = []
+	for pieces: Array in lines:
+		var spans: Array = []
+		var kinds: Array = []
+		for p: Dictionary in pieces:
+			var w := 5.0 if p.kind == "arrow" else UiTheme.width(String(p.text), SkillTreeScreen.SMALL_PX)
+			var x := float(p.x)
+			if x < SkillTreeScreen.LEVEL_TEXT_X - 0.01 or x + w > SkillTreeScreen.LEVEL_RIGHT + 0.01:
+				out.append("'%s' outside the column (%.1f-%.1f)" % [p.text, x, x + w])
+			for k in spans.size():
+				var q: Vector2 = spans[k]
+				var gap := 1.5 if p.kind == "arrow" or kinds[k] == "arrow" else 4.0
+				if x < q.y + gap - 0.01 and q.x < x + w + gap - 0.01:
+					out.append("'%s' meets another piece (%s)" % [p.text, _line_text(pieces)])
+			spans.append(Vector2(x, x + w))
+			kinds.append(String(p.kind))
+			if p.kind == "label":
+				seen.append(String(p.text))
+	if seen != labels:
+		out.append("labels %s, want %s" % [seen, labels])
+	return out
+
+
+static func _line_text(pieces: Array) -> String:
+	var parts := PackedStringArray()
+	for p: Dictionary in pieces:
+		parts.append("->" if p.kind == "arrow" else String(p.text))
+	return "|".join(parts)
 
 
 ## Only the crisp sizes: 11, 22, 33 and 66 through TEXT_*, NODE_NAME_PX, SMALL_PX and SIZE_CHIP; no old SIZE_* and no text call that leaves

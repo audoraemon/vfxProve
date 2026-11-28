@@ -44,7 +44,9 @@ const EMBLEM_R := 18.0
 const BADGE_AT := Vector2(8.0, 8.0)
 const BADGE_R := 5.0
 const ORBIT_SEGMENTS := 72
-## The level column's last text baseline.
+## The level column's head baseline, its first row's and its last text baseline.
+const LEVEL_HEAD := 268.0
+const LEVEL_FIRST := 280.0
 const LEVEL_BOTTOM := 348.0
 ## The twist line count the info column has room for (baselines 333 and 345).
 const TWIST_LINES := 2
@@ -494,28 +496,136 @@ static func num(s: String) -> String:
 	return _dot_zero.sub(s, "", true)
 
 
-## The level column's one value column for `rows` ({label, old, new}): every new value ends at `right`, every old value at `old_right`,
-## and the arrow sits at `arrow_x` between them, so the numbers line up whatever their width. Only changed rows size the new column.
-static func value_columns(rows: Array) -> Dictionary:
-	var right := LEVEL_X + LEVEL_W - 6.0
-	var new_w := 0.0
+## The level column's text runs from LEVEL_TEXT_X to LEVEL_RIGHT; a label keeps LEVEL_GAP u clear of its row's values.
+const LEVEL_TEXT_X := LEVEL_X + 8.0
+const LEVEL_RIGHT := LEVEL_X + LEVEL_W - 6.0
+const LEVEL_GAP := 6.0
+## "old -> new": the old value ends 2 u before the 5 u arrow and the new value starts 3 u after it.
+const ARROW_SPAN := 10.0
+
+
+## The level column's rows ({label, old, new}; the last is the Might row, always kept) laid out in at most `max_lines` lines:
+## an Array of lines, each an Array of pieces {"kind": "label" | "old" | "new" | "same" | "arrow", "text", "x"} (x is the left edge;
+## an arrow's is where _draw_arrow starts). Every label and value is whole and nothing overlaps (test_skill_tree):
+## - a row is "label  old -> new" on one line, the values in shared columns sized from the content (every new value ends at
+##   LEVEL_RIGHT, the arrows and old values of the rows that share them line up);
+## - a row too wide for that drops its old value ("label  -> new"), or, while lines are spare, stacks: the label on one line and
+##   "old -> new" on the next (or "label  old ->" then the new value when even the pair is too wide for one line);
+## - rows above the Might row are dropped from the end only if nothing else fits (no power's table needs it).
+static func level_lines(rows: Array, max_lines: int) -> Array:
+	var room := LEVEL_RIGHT - LEVEL_TEXT_X
+	var info: Array[Dictionary] = []
 	for row: Dictionary in rows:
 		var o := num(String(row.old))
 		var n := num(String(row["new"]))
-		if o != n:
-			new_w = maxf(new_w, UiTheme.width(n, SMALL_PX))
-	return {"new_w": new_w, "arrow_x": right - new_w - 8.0, "old_right": right - new_w - 10.0, "right": right}
-
-
-## Where one row's values go in `cols` (value_columns): {changed, old, old_x, new, new_x} (x is the left edge of the text).
-static func row_layout(row: Dictionary, cols: Dictionary) -> Dictionary:
-	var o := num(String(row.old))
-	var n := num(String(row["new"]))
-	var out := {"changed": o != n, "new": n, "new_x": float(cols.right) - UiTheme.width(n, SMALL_PX)}
-	if o != n:
-		out["old"] = o
-		out["old_x"] = float(cols.old_right) - UiTheme.width(o, SMALL_PX)
+		info.append({"label": String(row.label), "old": o, "new": n, "changed": o != n, "lw": UiTheme.width(String(row.label), SMALL_PX),
+			"ow": UiTheme.width(o, SMALL_PX), "nw": UiTheme.width(n, SMALL_PX)})
+	# The shared new column: the width that lets the most changed rows sit whole on one line (the wider one on a tie).
+	var col_w := 0.0
+	var best := -1
+	for cand: Dictionary in info:
+		if not cand.changed:
+			continue
+		var w: float = cand.nw
+		var fit := 0
+		for r: Dictionary in info:
+			if r.changed and float(r.nw) <= w and float(r.lw) + LEVEL_GAP + float(r.ow) + ARROW_SPAN + w <= room:
+				fit += 1
+		if fit > best or (fit == best and w > col_w):
+			best = fit
+			col_w = w
+	var forms: Array[String] = []
+	for r: Dictionary in info:
+		forms.append(_row_form(r, col_w, room))
+	var lines := 0
+	for f in forms:
+		lines += _FORM_LINES[f]
+	# Spare lines give a shortened row its old value back, top first.
+	for k in forms.size():
+		if forms[k] == "short" or forms[k] == "short_own":
+			var stacked := _stacked_form(info[k], col_w, room)
+			if lines - 1 + _FORM_LINES[stacked] <= max_lines:
+				lines += _FORM_LINES[stacked] - 1
+				forms[k] = stacked
+	# Too many even so: drop rows above the Might row, from the end.
+	while lines > max_lines and forms.size() > 1:
+		lines -= _FORM_LINES[forms[forms.size() - 2]]
+		forms.remove_at(forms.size() - 2)
+		info.remove_at(info.size() - 2)
+	var out := []
+	for k in forms.size():
+		out.append_array(_row_lines(info[k], forms[k], col_w))
 	return out
+
+
+const _FORM_LINES := {"full": 1, "same": 1, "short": 1, "short_own": 1, "same_stack": 2, "stack": 2, "stack_own": 2, "split": 2,
+	"split3": 3}
+
+
+## A row's first-choice form: one line if it can ("full" in the shared columns, "same" for an unchanged value, "short" / "short_own"
+## without the old value, its arrow in the shared column or by its own new value), else stacked.
+static func _row_form(r: Dictionary, col_w: float, room: float) -> String:
+	var lw: float = r.lw
+	if not r.changed:
+		return "same" if lw + LEVEL_GAP + float(r.nw) <= room else "same_stack"
+	if float(r.nw) <= col_w and lw + LEVEL_GAP + float(r.ow) + ARROW_SPAN + col_w <= room:
+		return "full"
+	if float(r.nw) <= col_w and lw + LEVEL_GAP + ARROW_SPAN + col_w <= room:
+		return "short"
+	if lw + LEVEL_GAP + ARROW_SPAN + float(r.nw) <= room:
+		return "short_own"
+	return _stacked_form(r, col_w, room)
+
+
+## A changed row on more than one line: label, then "old -> new" in the shared columns ("stack") or by its own new value
+## ("stack_own"); "label  old ->" then the new value ("split") when the pair is wider than the column; three lines at worst.
+static func _stacked_form(r: Dictionary, col_w: float, room: float) -> String:
+	if float(r.nw) <= col_w and float(r.ow) + ARROW_SPAN + col_w <= room:
+		return "stack"
+	if float(r.ow) + ARROW_SPAN + float(r.nw) <= room:
+		return "stack_own"
+	if float(r.lw) + LEVEL_GAP + float(r.ow) + ARROW_SPAN <= room:
+		return "split"
+	return "split3"
+
+
+## The pieces of one row in `form`, one Array per line.
+static func _row_lines(r: Dictionary, form: String, col_w: float) -> Array:
+	var x := LEVEL_TEXT_X
+	var label := {"kind": "label", "text": r.label, "x": x}
+	var new_x := LEVEL_RIGHT - float(r.nw)
+	var nv := {"kind": "new", "text": r["new"], "x": new_x}
+	var col_arrow := LEVEL_RIGHT - col_w - (ARROW_SPAN - 2.0)
+	var own_arrow := new_x - (ARROW_SPAN - 2.0)
+	match form:
+		"same":
+			return [[label, {"kind": "same", "text": r["new"], "x": new_x}]]
+		"same_stack":
+			return [[label], [{"kind": "same", "text": r["new"], "x": new_x}]]
+		"full":
+			return [[label, _old_at(r, col_arrow), _arrow(col_arrow), nv]]
+		"short":
+			return [[label, _arrow(col_arrow), nv]]
+		"short_own":
+			return [[label, _arrow(own_arrow), nv]]
+		"stack":
+			return [[label], [_old_at(r, col_arrow), _arrow(col_arrow), nv]]
+		"stack_own":
+			return [[label], [_old_at(r, own_arrow), _arrow(own_arrow), nv]]
+		"split":
+			var end_arrow := LEVEL_RIGHT - 5.0
+			return [[label, _old_at(r, end_arrow), _arrow(end_arrow)], [nv]]
+	var last_arrow := LEVEL_RIGHT - 5.0
+	return [[label], [_old_at(r, last_arrow), _arrow(last_arrow)], [nv]]
+
+
+## The old value ending 2 u before an arrow at `arrow_x`.
+static func _old_at(r: Dictionary, arrow_x: float) -> Dictionary:
+	return {"kind": "old", "text": r.old, "x": arrow_x - 2.0 - float(r.ow)}
+
+
+static func _arrow(arrow_x: float) -> Dictionary:
+	return {"kind": "arrow", "text": "", "x": arrow_x}
 
 
 ## The Might line as a row ("a -> b" when the next level changes it).
@@ -1047,29 +1157,34 @@ func _draw_clip(key: String) -> void:
 func _draw_levels(key: String) -> void:
 	var col := TreeDetail.level_column(_slot, key)
 	_ui.draw_line(Vector2(LEVEL_X, 258.0), Vector2(LEVEL_X, 346.0), Color("2a2433"), 1.0)
-	var x := LEVEL_X + 8.0
-	var room := LEVEL_W - 14.0
-	var y := 268.0
+	var y := LEVEL_HEAD
 	var line := UiTheme.LINE_S
-	UiTheme.text(_ui, Vector2(x, y), String(col.head), SMALL_PX, UiTheme.COL_DIM)
-	y += line
-	# Rows that do not fit above the Might row are dropped.
-	var budget := int((LEVEL_BOTTOM - y) / line)
-	var all_rows: Array = (col.rows as Array).slice(0, maxi(budget, 0))
-	all_rows.append(might_row(String(col.might)))
-	var cols := value_columns(all_rows)
-	for row: Dictionary in all_rows:
-		var lay := row_layout(row, cols)
-		var left := float(lay.new_x)
-		if lay.changed:
-			left = float(lay.old_x)
-			UiTheme.text(_ui, Vector2(float(lay.old_x), y), String(lay.old), SMALL_PX, Color("c8c0ac"))
-			_draw_arrow(float(cols.arrow_x), y - 4.0)
-			UiTheme.text(_ui, Vector2(float(lay.new_x), y), String(lay["new"]), SMALL_PX, COL_GREEN)
-		else:
-			UiTheme.text(_ui, Vector2(float(lay.new_x), y), String(lay["new"]), SMALL_PX, Color("c8c0ac"))
-		UiTheme.text(_ui, Vector2(x, y), UiTheme.fit(String(row.label), left - x - 4.0, SMALL_PX), SMALL_PX, Color("bfb49a"))
+	UiTheme.text(_ui, Vector2(LEVEL_TEXT_X, y), String(col.head), SMALL_PX, UiTheme.COL_DIM)
+	y = LEVEL_FIRST
+	for pieces: Array in level_lines(level_rows_of(col), level_line_count()):
+		for p: Dictionary in pieces:
+			match String(p.kind):
+				"arrow":
+					_draw_arrow(float(p.x), y - 4.0)
+				"label":
+					UiTheme.text(_ui, Vector2(float(p.x), y), String(p.text), SMALL_PX, Color("bfb49a"))
+				"new":
+					UiTheme.text(_ui, Vector2(float(p.x), y), String(p.text), SMALL_PX, COL_GREEN)
+				_:
+					UiTheme.text(_ui, Vector2(float(p.x), y), String(p.text), SMALL_PX, Color("c8c0ac"))
 		y += line
+
+
+## The rows the level column lays out for TreeDetail.level_column()'s `col`: its rows, then the Might row.
+static func level_rows_of(col: Dictionary) -> Array:
+	var rows: Array = (col.rows as Array).duplicate()
+	rows.append(might_row(String(col.might)))
+	return rows
+
+
+## How many lines the level column has under its head (baselines LEVEL_FIRST, then every LINE_S, down to LEVEL_BOTTOM).
+static func level_line_count() -> int:
+	return int((LEVEL_BOTTOM - LEVEL_FIRST) / UiTheme.LINE_S) + 1
 
 
 ## The level-5 twist as the detail panel writes it, in full: wrapped to the info column, at most TWIST_LINES lines (a test over every power).

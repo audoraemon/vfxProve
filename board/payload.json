@@ -7,12 +7,17 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release\n**11** in progress · **31** to do · **188** done\n**5** active branches besides Develop-Main\n\n**Since the last update** (<t:1795831035:f>)\n• Done: Veil frame-rate bench on a quiet machine",
+     "description": "**v0.12** is the latest release\n**12** in progress · **30** to do · **189** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1795851322:f>)\n• Done: Play test The Warning rework\n• New: Tier 1 rework: designs for the other four missions (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-28T08:57:15+07:00"
+     "timestamp": "2026-11-28T14:35:22+07:00"
+    },
+    {
+     "title": "god/deathmark-adjust",
+     "description": "2 commits not in Develop-Main · last commit today · local only\n> feat: Death Mark -- 2 s cooldown, 4.5 s to death, and the mark passes on (levels 2-4 leap 1-3)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
     },
     {
      "title": "feat/wish-clarity",
@@ -41,12 +46,12 @@
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-28\n> test: the Capital night check reads the Starfall's one town var after the Warning rework\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you** _(quiet since 11-10)_\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n• Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune\n\n**To do** (26)\n• Play test The Warning rework — **needs you**\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Soldier duties: frame-rate bench on a quiet machine\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-28\n> docs: Veil level-5 bench on a quiet machine (worst 1.28, all under 1.55); bench windows need --always-on-top\n\n**In progress** (10)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you** _(quiet since 11-10)_\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n• Tier 1 rework: designs for the other four missions\n• Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune\n\n**To do** (25)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Soldier duties: frame-rate bench on a quiet machine\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• Mission rework: The Warning _(11-28)_\n• Wish clarity: how to grant each wish _(11-28)_\n• Veil frame-rate bench on a quiet machine _(11-28)_\n• God's Chamber (hub replacement) _(11-28)_\n• Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups _(11-27)_\n• Veil ability levels: the dark watches back _(11-27)_\n• Veil landed in Develop-Main (powers, review, levels, twists 2, icons) _(11-27)_\n• Veil twists, second round: Dread, Swallowing Dark, Evernight _(11-27)_",
+     "description": "• Play test The Warning rework _(11-28)_\n• Mission rework: The Warning _(11-28)_\n• Wish clarity: how to grant each wish _(11-28)_\n• Veil frame-rate bench on a quiet machine _(11-28)_\n• God's Chamber (hub replacement) _(11-28)_\n• Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups _(11-27)_\n• Veil ability levels: the dark watches back _(11-27)_\n• Veil landed in Develop-Main (powers, review, levels, twists 2, icons) _(11-27)_",
      "color": 10185686
     }
    ]

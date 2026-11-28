@@ -35,6 +35,9 @@ const LABEL_NEAR := 6.0
 const LABEL_OWN_RATIO := 0.7
 ## The affordable nodes' glow breathes once in this many seconds.
 const PULSE_SECONDS := 1.6
+## A side panel's arched top: its two top corners' radius. They must not meet (2 x 56 = the 112 u width drew a stray diagonal seam
+## inside the panel at a fractional frame scale, 1024x768).
+const SIDE_CORNER_R := 55.0
 ## A hovered side icon's name fits the panel's foot up to this width; a wider one goes on a strip kept this far inside the screen.
 const SIDE_NAME_W := 104.0
 const SCREEN_MARGIN := 4.0
@@ -1049,8 +1052,8 @@ func _draw_side(side: int) -> void:
 	if _wide_style == null:
 		_wide_style = StyleBoxFlat.new()
 		_wide_style.set_corner_radius_all(4)
-		_wide_style.corner_radius_top_left = 56
-		_wide_style.corner_radius_top_right = 56
+		_wide_style.corner_radius_top_left = int(SIDE_CORNER_R)
+		_wide_style.corner_radius_top_right = int(SIDE_CORNER_R)
 		_wide_style.set_border_width_all(1)
 	_wide_style.bg_color = Color(1, 1, 1, 0.03 if not hot else 0.06)
 	_wide_style.border_color = Color("2a2433") if not hot else Color("4a4058")

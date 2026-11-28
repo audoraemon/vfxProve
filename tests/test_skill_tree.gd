@@ -636,6 +636,8 @@ static func _side_names(t) -> void:
 					if box.intersects(SkillTreeScreen.mini_rect(panel, tier, i)):
 						bad.append("%s: over the tier %d icon" % [full, tier])
 	t.check(bad.is_empty(), "a hovered side icon's name is whole, on screen and off the icons (%s)" % [bad])
+	t.check(SkillTreeScreen.SIDE_CORNER_R * 2.0 < TreeWheel.SIDE_L.size.x and SkillTreeScreen.SIDE_CORNER_R * 2.0 < TreeWheel.SIDE_R.size.x,
+		"a side panel's top corners do not meet (they drew a seam at 1024x768)")
 
 
 ## UiIcon.grey: a texture with an image gets a real grey copy (luma x 0.85, alpha kept, drawn white); one without (headless) gets itself back and the tint stand-in.

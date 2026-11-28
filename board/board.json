@@ -1,11 +1,12 @@
 {
- "hash": "ffc8fa862c991d7f",
- "updated": "2026-11-28T14:35:22+07:00",
+ "hash": "0b77c2ae362bd7c6",
+ "updated": "2026-11-28T19:23:57+07:00",
  "changes": {
-  "date": "<t:1795851322:f>",
+  "date": "<t:1795868637:f>",
   "items": [
-   "Done: Play test The Warning rework",
-   "New: Tier 1 rework: designs for the other four missions (in progress)"
+   "Done: Tier 1 rework: designs for the other four missions",
+   "New: Skill Tree panel fixes (Discord bug: level text out of place)",
+   "New: Tier 1 rework: shared groundwork (in progress)"
   ]
  },
  "snapshot": {
@@ -1072,6 +1073,16 @@
     "updated": "2026-11-16",
     "order": 214
    },
+   "skill-tree-panel-fix": {
+    "title": "Skill Tree panel fixes (Discord bug: level text out of place)",
+    "status": "done",
+    "area": "UI",
+    "version": "Develop-Main",
+    "needs_you": false,
+    "branch": "feat/Develop-Main",
+    "updated": "2026-11-28",
+    "order": 900
+   },
    "soldier-duties-bench": {
     "title": "Soldier duties: frame-rate bench on a quiet machine",
     "status": "todo",
@@ -1327,9 +1338,19 @@
     "updated": "2026-11-16",
     "order": 215
    },
+   "tier1-groundwork": {
+    "title": "Tier 1 rework: shared groundwork",
+    "status": "doing",
+    "area": "Design",
+    "version": "v0.12",
+    "needs_you": false,
+    "branch": "feat/tier1-groundwork",
+    "updated": "2026-11-28",
+    "order": 923
+   },
    "tier1-rework-designs": {
     "title": "Tier 1 rework: designs for the other four missions",
-    "status": "doing",
+    "status": "done",
     "area": "Design",
     "version": "v0.12",
     "needs_you": false,
@@ -2110,9 +2131,41 @@
   },
   "branches": [
    {
+    "name": "feat/tier1-gw-b",
+    "ahead": 4,
+    "behind": 5,
+    "date": "2026-11-28",
+    "subject": "feat: the shared Unseen reward and the --play launcher (Tier 1 groundwork G7)",
+    "pushed": false
+   },
+   {
+    "name": "feat/tier1-groundwork",
+    "ahead": 3,
+    "behind": 5,
+    "date": "2026-11-28",
+    "subject": "refactor: the Warning policy's posted and each loops and lift_out move to GodT1 (Tier 1 groundwork G6)",
+    "pushed": false
+   },
+   {
+    "name": "scratch/tier1-gwa",
+    "ahead": 3,
+    "behind": 5,
+    "date": "2026-11-28",
+    "subject": "test: GodT1 posted, each and lift_out shared by the Warning policy (Tier 1 groundwork G6)",
+    "pushed": false
+   },
+   {
+    "name": "claude/sound-natural-2",
+    "ahead": 2,
+    "behind": 5,
+    "date": "2026-11-28",
+    "subject": "feat: menu sounds take the god theme (bell glints, harp pluck, temple bowl in D minor)",
+    "pushed": true
+   },
+   {
     "name": "god/deathmark-adjust",
     "ahead": 2,
-    "behind": 0,
+    "behind": 5,
     "date": "2026-11-28",
     "subject": "feat: Death Mark -- 2 s cooldown, 4.5 s to death, and the mark passes on (levels 2-4 leap 1-3)",
     "pushed": false
@@ -2120,7 +2173,7 @@
    {
     "name": "feat/wish-clarity",
     "ahead": 3,
-    "behind": 127,
+    "behind": 132,
     "date": "2026-11-27",
     "subject": "test: re-record the 70 references the fair-life merge moves on the Veil landing",
     "pushed": false
@@ -2128,7 +2181,7 @@
    {
     "name": "feat/god-progression",
     "ahead": 0,
-    "behind": 499,
+    "behind": 504,
     "date": "2026-11-17",
     "subject": "test: the walker also credits Borrowed Life's kills",
     "pushed": true
@@ -2136,7 +2189,7 @@
    {
     "name": "god/dominion-t3-old",
     "ahead": 2,
-    "behind": 874,
+    "behind": 879,
     "date": "2026-11-06",
     "subject": "feat: Dominion's Tier 3 -- Clear Mind and Saint or Sinner",
     "pushed": false
@@ -2144,7 +2197,7 @@
    {
     "name": "fix/evac-recalm",
     "ahead": 1,
-    "behind": 1372,
+    "behind": 1377,
     "date": "2026-10-09",
     "subject": "fix: citizens who drop back to calm during an evacuation flee again",
     "pushed": false
@@ -2152,7 +2205,7 @@
    {
     "name": "feat/capital-city",
     "ahead": 0,
-    "behind": 1330,
+    "behind": 1335,
     "date": "2026-10-09",
     "subject": "docs: capital summary after polish 3",
     "pushed": true
@@ -2161,7 +2214,7 @@
   "main": {
    "name": "feat/Develop-Main",
    "date": "2026-11-28",
-   "subject": "docs: Veil level-5 bench on a quiet machine (worst 1.28, all under 1.55); bench windows need --always-on-top"
+   "subject": "fix: skill tree side panels lose the stray diagonal seam at 1024x768"
   }
  }
 }

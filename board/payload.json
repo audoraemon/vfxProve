@@ -7,12 +7,32 @@
    "embeds": [
     {
      "title": "KAK project board",
-     "description": "**v0.12** is the latest release\n**12** in progress · **30** to do · **189** done\n**6** active branches besides Develop-Main\n\n**Since the last update** (<t:1795851322:f>)\n• Done: Play test The Warning rework\n• New: Tier 1 rework: designs for the other four missions (in progress)",
+     "description": "**v0.12** is the latest release\n**12** in progress · **30** to do · **191** done\n**10** active branches besides Develop-Main\n\n**Since the last update** (<t:1795868637:f>)\n• Done: Tier 1 rework: designs for the other four missions\n• New: Skill Tree panel fixes (Discord bug: level text out of place)\n• New: Tier 1 rework: shared groundwork (in progress)",
      "color": 15249483,
      "footer": {
       "text": "Updated"
      },
-     "timestamp": "2026-11-28T14:35:22+07:00"
+     "timestamp": "2026-11-28T19:23:57+07:00"
+    },
+    {
+     "title": "feat/tier1-gw-b",
+     "description": "4 commits not in Develop-Main · last commit today · local only\n> feat: the shared Unseen reward and the --play launcher (Tier 1 groundwork G7)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "feat/tier1-groundwork",
+     "description": "3 commits not in Develop-Main · last commit today · local only\n> refactor: the Warning policy's posted and each loops and lift_out move to GodT1 (Tier 1 groundwork G6)\n\n**In progress** (1)\n• Tier 1 rework: shared groundwork",
+     "color": 5016537
+    },
+    {
+     "title": "scratch/tier1-gwa",
+     "description": "3 commits not in Develop-Main · last commit today · local only\n> test: GodT1 posted, each and lift_out shared by the Warning policy (Tier 1 groundwork G6)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
+    },
+    {
+     "title": "claude/sound-natural-2",
+     "description": "2 commits not in Develop-Main · last commit today\n> feat: menu sounds take the god theme (bell glints, harp pluck, temple bowl in D minor)\n\n_No Ledger task points at this branch._",
+     "color": 5016537
     },
     {
      "title": "god/deathmark-adjust",
@@ -38,7 +58,14 @@
      "title": "fix/evac-recalm",
      "description": "1 commit not in Develop-Main · last commit 50 days ago · local only\n> fix: citizens who drop back to calm during an evacuation flee again\n\n**In progress** (1)\n• Fix: citizens who drop back to calm during an evacuation flee again — **needs you** _(quiet since 10-09)_",
      "color": 7041664
-    },
+    }
+   ]
+  },
+  {
+   "allowed_mentions": {
+    "parse": []
+   },
+   "embeds": [
     {
      "title": "feat/capital-city",
      "description": "merged into Develop-Main · last commit 50 days ago\n> docs: capital summary after polish 3\n\n**In progress** (1)\n• The capital: second, larger city — **needs you** _(quiet since 10-09)_",
@@ -46,12 +73,12 @@
     },
     {
      "title": "feat/Develop-Main",
-     "description": "Main line · last commit 2026-11-28\n> docs: Veil level-5 bench on a quiet machine (worst 1.28, all under 1.55); bench windows need --always-on-top\n\n**In progress** (10)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you** _(quiet since 11-10)_\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n• Tier 1 rework: designs for the other four missions\n• Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune\n\n**To do** (25)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Soldier duties: frame-rate bench on a quiet machine\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
+     "description": "Main line · last commit 2026-11-28\n> fix: skill tree side panels lose the stray diagonal seam at 1024x768\n\n**In progress** (9)\n• Walkers stuck in alleys (hounds, pets, people) — **needs you** _(quiet since 11-10)_\n• Dominion Tier III and IV (seven powers) — **needs you** _(quiet since 10-04)_\n• Voice of God and Divine Schism (Tier 5 Dominion) — **needs you** _(quiet since 10-03)_\n• Madness Bloom (new power) — **needs you** _(quiet since 10-03)_\n• Divine Congregation (new power) — **needs you** _(quiet since 10-03)_\n• Mirrorfold Passage (new power) — **needs you** _(quiet since 10-03)_\n• Light of Solaris (new power) — **needs you** _(quiet since 10-03)_\n• Move work to the new laptop (BURIN_NITRO) — **needs you** _(quiet since 10-03)_\n• Death's Path: winnable Tier 1 (Spoiled Harvest, The Warning) + Death Mark tune\n\n**To do** (25)\n• Playtest v0.12: Tier 1 in the Capital — **needs you**\n• Playtest v0.11.2 (and listen) — **needs you**\n• Playtest v0.11.1 — **needs you**\n• Natural sound: listen, and the steps only you can do — **needs you**\n• v0.10 decisions for you (a)-(i) — **needs you**\n• Judge the ComfyUI cottage drafts; decide local drafts vs PixelLab generate — **needs you**\n• Playtest v0.07.1: Pestilence and Silent Doom — **needs you**\n• VFX branch conflicts with Develop-Main (person.gd) — **needs you**\n• Playtest the v0.08 loadout model (M2) — **needs you**\n• Playtest v0.08: The Warning and the loadout — **needs you**\n• Playtest v0.09: The Long Night — **needs you**\n• Decide: v0.09.1 follow-ups — **needs you**\n• Gaze banner understates rise from multi-death strikes\n• Soldier duties: frame-rate bench on a quiet machine\n• Fix Sermon B (Capital) at 0/3 scripted wins\n• Covered-outline: win back the 12-17% fps\n• Bake the whole UI font into one bitmap atlas (win back ~3-6% fps)\n• Re-roll people clips (after PixelLab refill)\n• Enemy heroes and defenses that fight back\n• Elemental combos and building materials\n• More maps and civilization ages\n• World map, progression and upgrades\n• More town responses\n• More abilities: Dread, Mire, Veil of Silence, False Omen, Gorgon's Gaze, Soul Harvest\n• Profile and cache the HUD keepout (v0.11 frame cost)",
      "color": 3908956
     },
     {
      "title": "Recently done",
-     "description": "• Play test The Warning rework _(11-28)_\n• Mission rework: The Warning _(11-28)_\n• Wish clarity: how to grant each wish _(11-28)_\n• Veil frame-rate bench on a quiet machine _(11-28)_\n• God's Chamber (hub replacement) _(11-28)_\n• Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups _(11-27)_\n• Veil ability levels: the dark watches back _(11-27)_\n• Veil landed in Develop-Main (powers, review, levels, twists 2, icons) _(11-27)_",
+     "description": "• Tier 1 rework: designs for the other four missions _(11-28)_\n• Play test The Warning rework _(11-28)_\n• Mission rework: The Warning _(11-28)_\n• Wish clarity: how to grant each wish _(11-28)_\n• Skill Tree panel fixes (Discord bug: level text out of place) _(11-28)_\n• Veil frame-rate bench on a quiet machine _(11-28)_\n• God's Chamber (hub replacement) _(11-28)_\n• Fair life: Scatter the Fair crowd flees fire, flinches, talks in groups _(11-27)_",
      "color": 10185686
     }
    ]

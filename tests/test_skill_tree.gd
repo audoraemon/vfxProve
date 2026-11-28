@@ -142,6 +142,12 @@ static func _buy(t) -> void:
 		"with no points it is refused and says why (%s)" % s.refused_reason)
 	s._process(SkillTreeScreen.REFUSE_SECONDS + 0.1)
 	t.check(s.refused_reason == "", "the reason goes after REFUSE_SECONDS")
+	# A refusal is about the power it was for: selecting another clears it (it stayed up to 1.5 s under the new power's button).
+	s.select(1, 5, 0)
+	s.click(SkillTreeScreen.BUY_RECT.get_center())
+	t.check(s.refused_reason == "Awaken to Tier 5", "a tier 5 spot is refused for the tier (%s)" % s.refused_reason)
+	s.click(TreeWheel.node_at(1, 0))
+	t.check(s.refused_reason == "", "selecting another power clears the last refusal (%s)" % s.refused_reason)
 	var back := []
 	s.action.connect(func(what: String) -> void: back.append(what))
 	s._on_gui_input(_click(SkillTreeScreen.BACK_RECT.get_center()))

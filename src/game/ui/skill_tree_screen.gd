@@ -182,8 +182,12 @@ func centre(col: int) -> void:
 	_redraw()
 
 
-## Selects a spot (nothing is spent); an empty spot may be selected, it shows "Not yet chosen".
+## Selects a spot (nothing is spent); an empty spot may be selected, it shows "Not yet chosen". A refusal shown for the last
+## selection goes (it was about that power).
 func select(col: int, tier: int, i: int) -> void:
+	if Vector3i(col, tier, i) != selected:
+		refused_reason = ""
+		_refuse_left = 0.0
 	selected = Vector3i(col, tier, i)
 	_load_selected()
 	_redraw()

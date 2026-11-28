@@ -24,6 +24,7 @@ static func run(t) -> void:
 	_labels_clear(t)
 	_refusal_fits(t)
 	_value_columns(t)
+	_stat_words(t)
 	_level_lines_every_power(t)
 	_crisp_only(t)
 	_pulse(t)
@@ -414,6 +415,25 @@ static func _refusal_fits(t) -> void:
 	t.check(Array(SkillTreeScreen.refusal_lines("Not enough ability points")) == ["Not enough", "ability points"],
 		"'Not enough ability points' breaks as 'Not enough' / 'ability points'")
 	t.check(SkillTreeScreen.refusal_lines("one two three four five six seven eight nine ten eleven twelve").size() == 2, "a long text is cut to 2 lines")
+
+
+## Every stat the level column prints reads as words (PowerBook.STAT_LABELS), never the effect's constant: Passage's tree showed
+## "PULL_R", "LAND_DAMAGE", "T_TAKE", "CLEAR_WORK" and more.
+static func _stat_words(t) -> void:
+	var raw := PackedStringArray()
+	var code := RegEx.create_from_string("^[A-Z0-9_]+$")
+	for s: Dictionary in GodTree.spots():
+		var key := String(s.key)
+		if key == "" or not PowerBook.has_levels(key):
+			continue
+		var entry := PowerBook.get_power(key)
+		for name: String in (entry.levels as Array)[0]:
+			if PowerBook.TWIST_KEYS.has(name):
+				continue
+			var label := PowerBook._stat_label(entry, name)
+			if code.search(label) != null or label.contains("_"):
+				raw.append("%s.%s" % [key, name])
+	t.check(raw.is_empty(), "every stat in the tree has a label in words (%s)" % [raw])
 
 
 ## The level column's layout (level_lines): the values in shared columns sized from their text, every new value ending at the right edge,

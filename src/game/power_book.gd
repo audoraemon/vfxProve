@@ -976,6 +976,12 @@ const STAT_LABELS := {
 	"ILL_MOST": "fall ill", "ILL_REACH": "ill reach", "blight.DUSK_R": "rot dusk", "SLEEP_TIME": "sleep", "cloak.SPAN": "hidden for",
 	"VEIL_TIME": "veil time", "dreamless.MOST": "sit down", "REST": "found in", "HOLD": "hold", "shadowplay.SPAN": "play",
 	"FULL_R": "full size", "GROW": "growth", "NIGHT_TIME": "night", "TAKE_LAST": "most taken", "TORCHES": "torches",
+	# Passage's ten (the Passage ability levels spec gave none: the tree printed the constants' names).
+	"skylift.T_TAKE": "lifts in", "windfall.SEGMENTS": "heaps", "windfall.CLEAR_WORK": "clearing work", "houndgate.HOUNDS": "hounds",
+	"houndgate.HUNT": "hunt", "houndgate.BLOWS": "blows to fell", "hellspark.OPEN": "open for", "deep.PULL_CORE": "pull",
+	"mirror.MIRROR_TIME": "open for", "allroads.MAX_PEOPLE": "people", "deaddoors.MAX_DOORS": "doors",
+	"deaddoors.MAX_SPIRITS": "spirits", "heavendoor.PULL_R": "pull reach", "heavendoor.PULL_FAR": "rim pull",
+	"heavendoor.LAND_DAMAGE": "landing blow",
 }
 
 

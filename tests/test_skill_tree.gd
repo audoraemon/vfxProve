@@ -28,6 +28,7 @@ static func run(t) -> void:
 	_crisp_only(t)
 	_pulse(t)
 	_mini_cells(t)
+	_side_names(t)
 	_states_draw(t)
 	_click_through_input(t)
 	_twists_whole(t)
@@ -578,6 +579,37 @@ static func _mini_cells(t) -> void:
 		t.check(is_equal_approx(cells[0].get_center().x, panel.get_center().x - 13.0) and is_equal_approx(cells[1].get_center().x, panel.get_center().x + 13.0)
 			and is_equal_approx(cells[0].position.y, panel.position.y + 60.0) and is_equal_approx(cells[8].position.y, panel.position.y + 60.0 + 96.0),
 			"two columns at the middle +- 13, rows 24 apart from +60")
+
+
+## A hovered small icon's name at the foot of its side panel is the whole name (it was cut to its first word: "The", "Breathing",
+## "Mirrorfold"); one wider than the panel sits on a strip that stays on screen and off the panel's icons.
+static func _side_names(t) -> void:
+	var bad := PackedStringArray()
+	for side in 2:
+		var panel := SkillTreeScreen.side_rect(side)
+		for s: Dictionary in GodTree.spots():
+			if String(s.key) == "":
+				continue
+			var full := String(PowerBook.get_power(String(s.key)).name)
+			var line := SkillTreeScreen.side_name(side, full)
+			var w := UiTheme.width(String(line.text), SkillTreeScreen.SMALL_PX)
+			var box := Rect2(float(line.x), panel.end.y - 18.0, w, 12.0)
+			var strip: Rect2 = line.strip
+			if strip.has_area():
+				box = strip
+				if not strip.encloses(Rect2(float(line.x), strip.position.y + 1.0, w, strip.size.y - 2.0)):
+					bad.append("%s: text outside its strip" % full)
+			elif not panel.grow(-3.0).encloses(Rect2(float(line.x), box.position.y, w, box.size.y)):
+				bad.append("%s: outside the panel" % full)
+			if String(line.text) != full:
+				bad.append("%s: shown as '%s'" % [full, line.text])
+			if box.position.x < 4.0 or box.end.x > 636.0:
+				bad.append("%s: off screen (%s)" % [full, box])
+			for tier in range(1, 6):
+				for i in 2:
+					if box.intersects(SkillTreeScreen.mini_rect(panel, tier, i)):
+						bad.append("%s: over the tier %d icon" % [full, tier])
+	t.check(bad.is_empty(), "a hovered side icon's name is whole, on screen and off the icons (%s)" % [bad])
 
 
 ## UiIcon.grey: a texture with an image gets a real grey copy (luma x 0.85, alpha kept, drawn white); one without (headless) gets itself back and the tint stand-in.

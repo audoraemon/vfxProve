@@ -35,6 +35,9 @@ const LABEL_NEAR := 6.0
 const LABEL_OWN_RATIO := 0.7
 ## The affordable nodes' glow breathes once in this many seconds.
 const PULSE_SECONDS := 1.6
+## A hovered side icon's name fits the panel's foot up to this width; a wider one goes on a strip kept this far inside the screen.
+const SIDE_NAME_W := 104.0
+const SCREEN_MARGIN := 4.0
 ## The refusal under RAISE wraps to this width (units) and at most 2 lines.
 const REFUSAL_W := 96.0
 ## The keys hint's box (kept clear of the labels).
@@ -1060,15 +1063,32 @@ func _draw_side(side: int) -> void:
 		_text_centred(mid - 40.0, row.get_center().y + 4.0, String(TreeDetail.ROMAN[tier - 1]), SMALL_PX, Color(UiTheme.COL_DIM, fade))
 		for i in GodTree.PER_TIER:
 			_draw_mini(side, col, tier, i, hue, fade)
-	var line := "click to centre"
-	var line_col := Color("9a9484", fade)
 	if _hover.begins_with("mini:%d:" % col):
 		var p := _hover.split(":")
 		var key := key_at(col, int(p[2]), int(p[3]))
 		if key != "":
-			line = UiTheme.fit(String(PowerBook.get_power(key).name), 104.0, SMALL_PX)
-			line_col = COL_LABEL
-	_text_centred(mid, panel.end.y - 8.0, line, SMALL_PX, line_col)
+			var shown := side_name(side, String(PowerBook.get_power(key).name))
+			var strip: Rect2 = shown.strip
+			if strip.has_area():
+				_ui.draw_rect(strip, COL_STRIP)
+			UiTheme.text(_ui, Vector2(float(shown.x), panel.end.y - 8.0), String(shown.text), SMALL_PX, COL_LABEL)
+			return
+	_text_centred(mid, panel.end.y - 8.0, "click to centre", SMALL_PX, Color("9a9484", fade))
+
+
+## A hovered small icon's name at the foot of side panel `side` (baseline 8 u above its bottom), always whole: {"text", "x" (left
+## edge), "strip"}. A name wider than SIDE_NAME_W sits on a label strip (zero-size Rect2 when not) centred on the panel and kept
+## SCREEN_MARGIN inside the 640 u screen.
+static func side_name(side: int, full: String) -> Dictionary:
+	var panel := side_rect(side)
+	var w := UiTheme.width(full, SMALL_PX)
+	var mid := panel.get_center().x
+	if w <= SIDE_NAME_W:
+		return {"text": full, "x": roundf(mid - w * 0.5), "strip": Rect2()}
+	var size := Vector2(ceilf(w) + 6.0, LABEL_STRIP_H)
+	var left := clampf(roundf(mid - size.x * 0.5), SCREEN_MARGIN, 640.0 - SCREEN_MARGIN - size.x)
+	var strip := Rect2(left, panel.end.y - 18.0, size.x, size.y)
+	return {"text": full, "x": left + 3.0, "strip": strip}
 
 
 func _draw_mini(side: int, col: int, tier: int, i: int, hue: Color, fade: float) -> void:
